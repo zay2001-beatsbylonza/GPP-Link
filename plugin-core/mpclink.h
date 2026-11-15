@@ -13,6 +13,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MPCLINK_PORT           47800
 #define MPCLINK_DISCOVERY_PORT 47801
 
@@ -22,6 +26,7 @@ typedef struct {
     char hub_name[64];  /* the Mac's name, for the screen */
     char device[41];    /* this MPC's name, e.g. "MPC Live II" */
     int  timeout_ms;    /* per socket operation */
+    volatile int cancel;/* set non-zero from another thread to stop a transfer early */
 } mpclink_ctx;
 
 typedef enum {
@@ -30,7 +35,8 @@ typedef enum {
     MPCLINK_ERR_HTTP = -2,     /* hub refused the request */
     MPCLINK_ERR_IO = -3,       /* local file problem */
     MPCLINK_ERR_NOT_FOUND = -4,/* no hub answered discovery */
-    MPCLINK_ERR_ARG = -5
+    MPCLINK_ERR_ARG = -5,
+    MPCLINK_ERR_CANCELLED = -6 /* ctx->cancel was set */
 } mpclink_status;
 
 /* One file in the Beats folder. path is relative to it, '/'-separated. */
@@ -75,5 +81,9 @@ int mpclink_poll_inbox(mpclink_ctx *ctx, const char *dest_dir);
 const char *mpclink_default_dest(void);
 
 const char *mpclink_strerror(int status);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

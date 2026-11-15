@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -106,6 +107,7 @@ static int wait_fd(int fd, short ev, int ms) {
 }
 
 static int conn_open(conn_t *c, const mpclink_ctx *ctx) {
+    struct timeval tv;   /* declared up front: C++ forbids a goto past an initialisation */
     memset(c, 0, sizeof *c);
     c->timeout_ms = ctx->timeout_ms;
     struct sockaddr_in a;
@@ -126,7 +128,8 @@ static int conn_open(conn_t *c, const mpclink_ctx *ctx) {
             goto fail;
     }
     fcntl(c->fd, F_SETFL, fl);
-    struct timeval tv = { c->timeout_ms / 1000, (c->timeout_ms % 1000) * 1000 };
+    tv.tv_sec = c->timeout_ms / 1000;
+    tv.tv_usec = (c->timeout_ms % 1000) * 1000;
     setsockopt(c->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
     setsockopt(c->fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
     return MPCLINK_OK;
@@ -142,7 +145,7 @@ static void conn_close(conn_t *c) {
 }
 
 static int send_all(conn_t *c, const void *data, size_t n) {
-    const char *p = data;
+    const char *p = (const char *)data;
     while (n) {
         ssize_t w = send(c->fd, p, n, MSG_NOSIGNAL);
         if (w < 0 && errno == EINTR) continue;
@@ -169,6 +172,7 @@ static ssize_t conn_read(conn_t *c, void *out, size_t n) {
  * status and headers. Leaves the connection positioned at the body. */
 static int http_request(conn_t *c, const mpclink_ctx *ctx, const char *method, const char *target,
                         FILE *body, long long body_len, int *status, long long *content_len) {
+    char *end = NULL;
     int r = conn_open(c, ctx);
     if (r) return r;
     char hdr[2048];
@@ -187,6 +191,7 @@ static int http_request(conn_t *c, const mpclink_ctx *ctx, const char *method, c
         size_t k;
         long long sent = 0;
         while ((k = fread(chunk, 1, sizeof chunk, body)) > 0) {
+            if (ctx->cancel) { conn_close(c); return MPCLINK_ERR_CANCELLED; }
             if (send_all(c, chunk, k)) goto netfail;
             sent += (long long)k;
         }
@@ -195,7 +200,6 @@ static int http_request(conn_t *c, const mpclink_ctx *ctx, const char *method, c
 
     /* read until end of headers */
     c->len = 0;
-    char *end = NULL;
     while (!end) {
         if (c->len >= sizeof c->buf - 1) goto netfail;
         ssize_t got;
@@ -222,13 +226,13 @@ netfail:
 /* read the whole (small) body into a malloc'd, NUL-terminated buffer */
 static char *read_body(conn_t *c, size_t limit) {
     size_t cap = 4096, n = 0;
-    char *out = malloc(cap);
+    char *out = (char *)malloc(cap);
     if (!out) return NULL;
     for (;;) {
         if (n + 4096 > cap) {
             if (cap >= limit) { free(out); return NULL; }
             cap *= 2;
-            char *t = realloc(out, cap);
+            char *t = (char *)realloc(out, cap);
             if (!t) { free(out); return NULL; }
             out = t;
         }
@@ -367,19 +371,24 @@ int mpclink_download(mpclink_ctx *ctx, const char *path, const char *dest_dir,
 
     /* write to a hidden temp file, rename when complete */
     char part[1100];
-    snprintf(part, sizeof part, "%s/.mpclink-%ld.part", dest_dir, (long)getpid());
+    /* pid + context address: unique even with two plugin instances in one MPC process */
+    snprintf(part, sizeof part, "%s/.mpclink-%ld-%lx.part", dest_dir, (long)getpid(), (unsigned long)(size_t)ctx);
     FILE *out = fopen(part, "wb");
     if (!out) { conn_close(&c); return MPCLINK_ERR_IO; }
     char chunk[16384];
     long long got = 0;
     ssize_t n;
     while ((n = conn_read(&c, chunk, sizeof chunk)) > 0) {
+        if (ctx->cancel) { n = -3; break; }
         if (fwrite(chunk, 1, (size_t)n, out) != (size_t)n) { n = -2; break; }
         got += n;
     }
     conn_close(&c);
     int bad = (n < 0) || (clen >= 0 && got != clen);
-    if (fclose(out) || bad) { unlink(part); return n == -2 ? MPCLINK_ERR_IO : MPCLINK_ERR_NETWORK; }
+    if (fclose(out) || bad) {
+        unlink(part);
+        return n == -3 ? MPCLINK_ERR_CANCELLED : n == -2 ? MPCLINK_ERR_IO : MPCLINK_ERR_NETWORK;
+    }
 
     char final_path[1100];
     free_name(dest_dir, name, final_path, sizeof final_path);
@@ -397,7 +406,7 @@ int mpclink_poll_inbox(mpclink_ctx *ctx, const char *dest_dir) {
     for (char *line = strtok_r(body, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
         if (!*line) continue;
         r = mpclink_download(ctx, line, dest_dir, NULL, 0);
-        if (r == MPCLINK_ERR_NETWORK) break;   /* try the rest next poll */
+        if (r == MPCLINK_ERR_NETWORK || r == MPCLINK_ERR_CANCELLED) break;   /* try the rest next poll */
         /* got it, or the hub can't serve it (deleted/renamed): either way clear it */
         char enc[1536], target[1700];
         url_encode(line, enc, sizeof enc);
@@ -407,7 +416,7 @@ int mpclink_poll_inbox(mpclink_ctx *ctx, const char *dest_dir) {
         if (r == MPCLINK_OK) count++;
     }
     free(body);
-    return r == MPCLINK_ERR_NETWORK ? r : count;
+    return (r == MPCLINK_ERR_NETWORK || r == MPCLINK_ERR_CANCELLED) ? r : count;
 }
 
 const char *mpclink_default_dest(void) {
@@ -437,6 +446,7 @@ const char *mpclink_strerror(int s) {
     case MPCLINK_ERR_IO: return "File error on MPC";
     case MPCLINK_ERR_NOT_FOUND: return "No Mac found";
     case MPCLINK_ERR_ARG: return "Bad request";
+    case MPCLINK_ERR_CANCELLED: return "Stopped";
     default: return "Error";
     }
 }

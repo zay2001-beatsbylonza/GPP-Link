@@ -1,0 +1,61 @@
+{
+  "kit": {
+    "theme": "amber",
+    "accent": "ffffd400"
+  },
+  "pages": [
+    {
+      "name": "LINK",
+      "controls": [
+        {
+          "param": "Mac",
+          "widget": "slider"
+        },
+        {
+          "param": "Activity",
+          "widget": "slider"
+        },
+        {
+          "param": "Phone Q",
+          "widget": "switch"
+        },
+        {
+          "param": "Level",
+          "widget": "fader"
+        },
+        {
+          "param": "Mac File",
+          "widget": "slider"
+        },
+        {
+          "param": "Get",
+          "widget": "switch"
+        },
+        {
+          "param": "Refresh",
+          "widget": "switch"
+        },
+        "empty",
+        {
+          "param": "MPC File",
+          "widget": "slider"
+        },
+        {
+          "param": "Send",
+          "widget": "switch"
+        },
+        {
+          "param": "Send All",
+          "widget": "switch"
+        },
+        "empty"
+      ]
+    }
+  ],
+  "style": {
+    "background": "ff000000",
+    "accent": "ffe53935",
+    "text": "ffffd400",
+    "muted": "ffe53935"
+  }
+}

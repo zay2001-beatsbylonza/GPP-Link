@@ -12,9 +12,10 @@ Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 | --- | --- | --- |
 | `hub/` | The Mac app (Go, no dependencies) plus the phone web page | Working, tested |
 | `plugin-core/` | C library the MPC plugin uses, and `mpclink-cli` for testing | Working, tested against the hub |
-| plugin wrapper | VST2 plugin + MPC skin for Gen1 (armv7) and Gen2 (aarch64), on Akai's MPC Plugin SDK | Next step |
+| `plugin/` | The MPC plugin (VST2, Gen1 + Gen2) on Akai's MPC Plugin SDK; see `plugin/README.md` | Tested in a pretend MPC; first hardware test on the MPC XL |
+| `tests/` | End-to-end tests GitHub runs on every push | |
 
-Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `MPC-Link-Mac` and `mpclink-cli` for each MPC generation.
+Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `MPC-Link-Mac`, `MPC-Link-Plugin`, and `mpclink-cli` for each MPC generation.
 
 ## Run the hub on the Mac
 
