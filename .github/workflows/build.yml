@@ -1,0 +1,76 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Vet and build the hub
+        working-directory: hub
+        run: |
+          go vet ./...
+          go build -o ../hub-linux .
+      - name: Build mpclink-cli (strict warnings)
+        run: cc -std=c99 -Wall -Wextra -Werror -O2 -o cli-linux plugin-core/mpclink.c plugin-core/mpclink_cli.c
+      - name: End-to-end test
+        run: sh tests/e2e.sh ./hub-linux ./cli-linux
+
+  mac-hub:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Build for Apple Silicon and Intel Macs
+        working-directory: hub
+        run: |
+          mkdir -p "../dist/MPC Link"
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "../dist/MPC Link/mpc-link-hub-apple-silicon" .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../dist/MPC Link/mpc-link-hub-intel" .
+          cp "Start MPC Link.command" ../README.md "../dist/MPC Link/"
+          chmod +x "../dist/MPC Link/"*.command "../dist/MPC Link/"mpc-link-hub-*
+      - name: Zip (keeps the run permissions)
+        working-directory: dist
+        run: zip -r -X MPC-Link-Mac.zip "MPC Link"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MPC-Link-Mac
+          path: dist/MPC-Link-Mac.zip
+
+  mpc-cli:
+    needs: test
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - gen: gen1
+            arch: armv7
+            cc: arm-linux-gnueabihf-gcc
+            pkg: gcc-arm-linux-gnueabihf
+          - gen: gen2
+            arch: aarch64
+            cc: aarch64-linux-gnu-gcc
+            pkg: gcc-aarch64-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross compiler
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkg }}
+      - name: Build static mpclink-cli for MPC ${{ matrix.gen }}
+        run: |
+          ${{ matrix.cc }} -std=c99 -Wall -Wextra -Werror -O2 -static \
+            -o mpclink-cli plugin-core/mpclink.c plugin-core/mpclink_cli.c
+          file mpclink-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mpclink-cli-${{ matrix.gen }}-${{ matrix.arch }}
+          path: mpclink-cli
