@@ -11,7 +11,18 @@ trap 'kill $HP $QP 2>/dev/null || true; rm -rf "$S"' EXIT
 PF="$S/drive/VST2 Plugins/BeatsbyLonza - VST - MPC Link"
 mkdir -p "$S/Beats/Beats 2026" "$PF" "$S/drive/To Computer/Chops"
 cp "$(dirname "$0")/../plugin/plugin.json" "$PF/"
-head -c 3000000 /dev/urandom > "$S/Beats/Beats 2026/Trap Beat 140.wav"
+# a real 3-second WAV (a 220 Hz tone that swells), so the cassette can decode and play it
+# and its waveform changes from bar to bar
+python3 - "$S/Beats/Beats 2026/Trap Beat 140.wav" <<'PY'
+import math, struct, sys, wave
+w = wave.open(sys.argv[1], "wb")
+w.setnchannels(2); w.setsampwidth(2); w.setframerate(44100)
+w.writeframes(b"".join(struct.pack("<hh", v, v) for v in
+                       (int(16000 * (0.1 + 0.9 * i / (3 * 44100)) * math.sin(2 * math.pi * 220 * i / 44100)) for i in range(3 * 44100))))
+w.close()
+PY
+mkdir -p "$S/Beats/Stems/Song B Stems"
+for t in drums bass; do echo "$t" > "$S/Beats/Stems/Song B Stems/$t.wav"; done
 echo hat > "$S/Beats/hat.wav"
 touch -t 202001010000 "$S/Beats/hat.wav"                      # older, so Trap Beat is first
 head -c 1500000 /dev/urandom > "$S/drive/To Computer/my chop #1.wav"
@@ -40,4 +51,7 @@ QP=$!
 MPC_PLUGIN_FOLDER="$PF" timeout 150 "$HOSTTEST" "$PLUGIN" "$S/drive"
 [ -f "$S/drive/To Computer/notes.txt" ] || { echo "FAIL: non-audio file was touched"; exit 1; }
 [ -f "$S/Beats/From MPC/"*"/Chops/snare.wav" ] || { echo "FAIL: subfolder not kept on the Mac"; exit 1; }
+[ -f "$S/Beats/Get Producers Paid/my chop #1.wav" ] || { echo "FAIL: GPP file not in Get Producers Paid"; exit 1; }
+[ -f "$S/Beats/Get Producers Paid/Stems/Song B Stems/bass.wav" ] || { echo "FAIL: stems not copied to GPP"; exit 1; }
+[ ! -e "$S/Beats/From MPC/"*"/my chop #1.wav" ] || { echo "FAIL: GPP send also went to From MPC"; exit 1; }
 echo "plugin test: all checks passed"

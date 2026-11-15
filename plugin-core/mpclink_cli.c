@@ -4,6 +4,9 @@
  *   mpclink-cli [-n "MPC Name"] [-h host[:port]] find
  *   mpclink-cli ... list
  *   mpclink-cli ... send <local file> [remote path]
+ *   mpclink-cli ... send-gpp <local file>        (to the Get Producers Paid drafts folder)
+ *   mpclink-cli ... stems                        (list stems folders in the Beats folder)
+ *   mpclink-cli ... send-stems <folder>          (Mac copies it to Get Producers Paid/Stems)
  *   mpclink-cli ... get <path in Beats folder> [dest dir]
  *   mpclink-cli ... inbox [dest dir]
  */
@@ -19,7 +22,7 @@ static int print_entry(const mpclink_entry *e, void *user) {
 }
 
 static int usage(void) {
-    fprintf(stderr, "usage: mpclink-cli [-n name] [-h host[:port]] find|list|send FILE [REMOTE]|get PATH [DIR]|inbox [DIR]\n");
+    fprintf(stderr, "usage: mpclink-cli [-n name] [-h host[:port]] find|list|send FILE [REMOTE]|send-gpp FILE|stems|send-stems FOLDER|get PATH [DIR]|inbox [DIR]\n");
     return 2;
 }
 
@@ -56,6 +59,15 @@ int main(int argc, char **argv) {
     } else if (!strcmp(cmd, "send") && i < argc) {
         r = mpclink_upload(&ctx, argv[i], i + 1 < argc ? argv[i + 1] : NULL);
         if (r == MPCLINK_OK) printf("sent %s\n", argv[i]);
+    } else if (!strcmp(cmd, "send-gpp") && i < argc) {
+        r = mpclink_upload_to(&ctx, argv[i], NULL, "gpp");
+        if (r == MPCLINK_OK) printf("sent %s to Get Producers Paid\n", argv[i]);
+    } else if (!strcmp(cmd, "stems")) {
+        r = mpclink_list_stems(&ctx, print_entry, NULL);
+    } else if (!strcmp(cmd, "send-stems") && i < argc) {
+        int n = 0;
+        r = mpclink_send_stems(&ctx, argv[i], &n);
+        if (r == MPCLINK_OK) printf("sent %d stems to Get Producers Paid\n", n);
     } else if (!strcmp(cmd, "get") && i < argc) {
         char saved[1100];
         r = mpclink_download(&ctx, argv[i], i + 1 < argc ? argv[i + 1] : mpclink_default_dest(), saved, sizeof saved);

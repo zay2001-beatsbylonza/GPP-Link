@@ -317,9 +317,40 @@ int mpclink_ping(mpclink_ctx *ctx) {
     return r;
 }
 
+static int list_tsv(mpclink_ctx *ctx, const char *target, mpclink_entry_cb cb, void *user);
+
 int mpclink_list(mpclink_ctx *ctx, mpclink_entry_cb cb, void *user) {
+    return list_tsv(ctx, "/api/list?format=tsv", cb, user);
+}
+
+int mpclink_list_stems(mpclink_ctx *ctx, mpclink_entry_cb cb, void *user) {
+    return list_tsv(ctx, "/api/stems?format=tsv", cb, user);
+}
+
+int mpclink_send_stems(mpclink_ctx *ctx, const char *folder, int *files) {
+    if (files) *files = 0;
+    if (!folder || !*folder) return MPCLINK_ERR_ARG;
+    char enc[1536], target[1700];
+    url_encode(folder, enc, sizeof enc);
+    snprintf(target, sizeof target, "/api/stems/send?path=%s", enc);
+    conn_t c;
+    int status; long long clen;
+    int r = http_request(&c, ctx, "POST", target, NULL, 0, &status, &clen);
+    if (r) return r;
+    char *body = read_body(&c, 1u << 16);
+    conn_close(&c);
+    if (status != 200) { free(body); return MPCLINK_ERR_HTTP; }
+    if (files && body) {
+        const char *f = strstr(body, "\"files\":");
+        if (f) *files = atoi(f + 8);
+    }
+    free(body);
+    return MPCLINK_OK;
+}
+
+static int list_tsv(mpclink_ctx *ctx, const char *target, mpclink_entry_cb cb, void *user) {
     char *body = NULL;
-    int r = http_get_small(ctx, "/api/list?format=tsv", &body);
+    int r = http_get_small(ctx, target, &body);
     if (r) return r;
     char *save = NULL;
     for (char *line = strtok_r(body, "\n", &save); line; line = strtok_r(NULL, "\n", &save)) {
@@ -337,13 +368,18 @@ int mpclink_list(mpclink_ctx *ctx, mpclink_entry_cb cb, void *user) {
 }
 
 int mpclink_upload(mpclink_ctx *ctx, const char *local_file, const char *remote_path) {
+    return mpclink_upload_to(ctx, local_file, remote_path, NULL);
+}
+
+int mpclink_upload_to(mpclink_ctx *ctx, const char *local_file, const char *remote_path, const char *dest) {
+    if (dest && strcmp(dest, "gpp") != 0 && strcmp(dest, "gpp-stems") != 0) return MPCLINK_ERR_ARG;
     FILE *f = fopen(local_file, "rb");
     if (!f) return MPCLINK_ERR_IO;
     struct stat st;
     if (fstat(fileno(f), &st) || !S_ISREG(st.st_mode)) { fclose(f); return MPCLINK_ERR_IO; }
     char enc[1536], target[1700];
     url_encode(remote_path ? remote_path : base_name(local_file), enc, sizeof enc);
-    snprintf(target, sizeof target, "/api/upload?path=%s", enc);
+    snprintf(target, sizeof target, "/api/upload?path=%s%s%s", enc, dest ? "&dest=" : "", dest ? dest : "");
     conn_t c;
     int status; long long clen;
     int r = http_request(&c, ctx, "PUT", target, f, (long long)st.st_size, &status, &clen);
@@ -394,6 +430,49 @@ int mpclink_download(mpclink_ctx *ctx, const char *path, const char *dest_dir,
     free_name(dest_dir, name, final_path, sizeof final_path);
     if (rename(part, final_path)) { unlink(part); return MPCLINK_ERR_IO; }
     if (saved_to) copy_str(saved_to, saved_to_len, final_path);
+    return MPCLINK_OK;
+}
+
+int mpclink_fetch_preview(mpclink_ctx *ctx, const char *path, unsigned char **out, size_t *out_len, size_t max_bytes) {
+    *out = NULL;
+    *out_len = 0;
+    if (!path || !*path) return MPCLINK_ERR_ARG;
+    char enc[1536], target[1700];
+    url_encode(path, enc, sizeof enc);
+    snprintf(target, sizeof target, "/api/preview?path=%s", enc);
+    conn_t c;
+    int status; long long clen;
+    int r = http_request(&c, ctx, "GET", target, NULL, -1, &status, &clen);
+    if (r) return r;
+    if (status != 200) { conn_close(&c); return MPCLINK_ERR_HTTP; }
+    if (clen < 44 || (unsigned long long)clen > (unsigned long long)max_bytes) { conn_close(&c); return MPCLINK_ERR_HTTP; }
+    unsigned char *buf = (unsigned char *)malloc((size_t)clen);
+    if (!buf) { conn_close(&c); return MPCLINK_ERR_IO; }
+    size_t got = 0;
+    ssize_t n = 0;
+    while (got < (size_t)clen && (n = conn_read(&c, buf + got, (size_t)clen - got)) > 0) {
+        if (ctx->cancel) { n = -3; break; }
+        got += (size_t)n;
+    }
+    conn_close(&c);
+    if (got != (size_t)clen) {
+        free(buf);
+        return n == -3 ? MPCLINK_ERR_CANCELLED : MPCLINK_ERR_NETWORK;
+    }
+    *out = buf;
+    *out_len = got;
+    return MPCLINK_OK;
+}
+
+int mpclink_take_cue(mpclink_ctx *ctx, char *buf, size_t buf_len) {
+    if (buf_len) buf[0] = 0;
+    char *body = NULL;
+    int r = http_get_small(ctx, "/api/cue", &body);
+    if (r) return r;
+    char *nl = strchr(body, '\n');
+    if (nl) *nl = 0;
+    copy_str(buf, buf_len, body);
+    free(body);
     return MPCLINK_OK;
 }
 

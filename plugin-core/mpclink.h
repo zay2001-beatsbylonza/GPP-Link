@@ -67,11 +67,35 @@ int mpclink_list(mpclink_ctx *ctx, mpclink_entry_cb cb, void *user);
  * It lands in <Beats>/From MPC/<device>/... and never overwrites. */
 int mpclink_upload(mpclink_ctx *ctx, const char *local_file, const char *remote_path);
 
+/* The same, to a named destination on the Mac: NULL = "From MPC/<device>/",
+ * "gpp" = "Get Producers Paid/" (drafts for the Get Producers Paid app),
+ * "gpp-stems" = "Get Producers Paid/Stems/". */
+int mpclink_upload_to(mpclink_ctx *ctx, const char *local_file, const char *remote_path, const char *dest);
+
 /* Download one shared file into dest_dir (created if missing).
  * Never overwrites: "kick.wav" becomes "kick (2).wav". The full
  * local path is written to saved_to (may be NULL). */
 int mpclink_download(mpclink_ctx *ctx, const char *path, const char *dest_dir,
                      char *saved_to, size_t saved_to_len);
+
+/* Stems folders in the Beats folder on the Mac (folders with 2+ audio files),
+ * newest first. e->size is the number of audio files in the folder. */
+int mpclink_list_stems(mpclink_ctx *ctx, mpclink_entry_cb cb, void *user);
+
+/* Ask the Mac to copy a stems folder into "Get Producers Paid/Stems/". The files
+ * are copied on the Mac; nothing passes through the MPC. *files (may be NULL)
+ * gets the number of files copied. */
+int mpclink_send_stems(mpclink_ctx *ctx, const char *folder, int *files);
+
+/* Fetch a beat for playback: the hub returns it as plain WAV (16-bit stereo,
+ * 44.1 kHz, 44-byte header) whatever the original format. On success *out is
+ * a malloc'd buffer the caller frees and *out_len its size. Refuses anything
+ * over max_bytes. */
+int mpclink_fetch_preview(mpclink_ctx *ctx, const char *path, unsigned char **out, size_t *out_len, size_t max_bytes);
+
+/* Has the phone page cued a beat for this MPC's Mac Beat picker? Writes its
+ * path to buf ("" when nothing is cued). Each cue is returned once. */
+int mpclink_take_cue(mpclink_ctx *ctx, char *buf, size_t buf_len);
 
 /* Fetch everything queued for this MPC from the phone page.
  * Returns the number of files received (>= 0) or an error. */

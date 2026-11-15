@@ -15,31 +15,43 @@ Needs the **MPC Link hub** running on the Mac (`Start MPC Link.command`), with t
 
 ## Use
 
-On any track, add an insert: **External VST Plugins → BeatsbyLonza → MPC Link**. The plugin passes audio straight through, so the track sounds the same.
+On any track, add an insert: **External VST Plugins → BeatsbyLonza → MPC Link**. Audio passes straight through, so the track sounds the same.
 
-| Control | What it does |
-| --- | --- |
-| **Mac** | Connection status: `On <your Mac>` once it finds the hub |
-| **Activity** | What just happened (`Got …`, `Sent …`) |
-| **Phone Q** | On: files you send from the phone page arrive by themselves |
-| **Level** | Output level (leave at 0 dB) |
-| **Mac File** | Turn to pick a file from your Beats folder (newest first) |
-| **Get** | Download the picked file into `From Computer` |
-| **Refresh** | Reconnect and re-read both lists |
-| **MPC File** | Turn to pick a file from `To Computer` |
-| **Send** | Send the picked file to the Mac |
-| **Send All** | Send everything in `To Computer` |
+### The cassette deck
+
+Pick a beat with **Computer Files** and press **PLAY** on the cassette to hear it through this track before you send it anywhere. The reels turn, the blue waveform scrolls past the red playhead like tape moving (bright blue has played, darker blue is coming), and the label shows the name and time. Press the same button (**STOP**) to stop and rewind to the front; the end of the beat rewinds too, and picking another beat stops the tape. MP3, WAV, AIFF, FLAC and M4A all play (your Mac converts them); nothing is saved on the MPC.
+
+### The four blocks
+
+Turn the Q-Link above a block to pick, then press its big button. Nothing is sent until you press.
+
+| Block | Pick with | What the button does |
+| --- | --- | --- |
+| **SEND TO MPC** | **Computer Files** (your Beats folder, newest first) | Copies the beat into `From Computer` on this MPC |
+| **SEND TO FOLDER** | **From MPC** (files in `To Computer`) | Copies it to `Beats/From MPC/<this MPC>/` on the computer |
+| **SEND TO GET PRODUCERS PAID** | the same **From MPC** pick | Copies it to `Beats/Get Producers Paid/` on the computer, ready to become a draft in the app |
+| **SEND STEMS TO GET PRODUCERS PAID** | **Computer Stems** (stems folders in your Beats folder) | The computer copies the whole folder to `Beats/Get Producers Paid/Stems/` |
+
+**From MPC** stretches across the two buttons it feeds: pick a finished beat once, then send it to your folder, to Get Producers Paid, or both.
+
+A stems folder is any folder in your Beats folder with two or more audio files in it; the picker shows how many files each has. Stems are copied on the Mac, so even big stem sets go instantly.
+
+The cassette label shows the connection (`On <your Mac>`) and what just happened. A button turns yellow while it works.
+
+Files sent from the phone page arrive in `From Computer` by themselves, and the lists refresh on their own.
 
 Folders on the MPC drive the plugin is installed on:
 
 - `From Computer/`: files from the Mac land here. Load them from the MPC browser.
-- `To Computer/`: save or export anything here to send it. After sending, files move to `To Computer/Sent/`.
+- `To Computer/`: save or export finished beats here to send them. Files stay here after sending.
 
-On the Mac, files from this MPC land in `Beats/From MPC/<this MPC's name>/`. Nothing on either side is ever overwritten; a second `kick.wav` becomes `kick (2).wav`.
+Nothing on either side is ever overwritten; a second `kick.wav` becomes `kick (2).wav`.
+
+**Get Producers Paid:** for now, beats and stems wait in `Beats/Get Producers Paid/` on the Mac. Once the Get Producers Paid server is live, the hub will upload them to your producer account as drafts, where you add the title, price and license and publish.
 
 ## If it says "No Mac found"
 
-Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `MPC Link hub.txt` at the top of the MPC's drive, next to `VST2 Plugins`, containing just the Mac's address from the hub window, for example `192.168.1.139`. Then press **Refresh**.
+Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `MPC Link hub.txt` at the top of the MPC's drive, next to `VST2 Plugins`, containing just the Mac's address from the hub window, for example `192.168.1.139`. The plugin tries again every few seconds.
 
 ## Notes
 

@@ -14,6 +14,7 @@ Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 | `plugin-core/` | C library the MPC plugin uses, and `mpclink-cli` for testing | Working, tested against the hub |
 | `plugin/` | The MPC plugin (VST2, Gen1 + Gen2) on Akai's MPC Plugin SDK; see `plugin/README.md` | Tested in a pretend MPC; first hardware test on the MPC XL |
 | `tests/` | End-to-end tests GitHub runs on every push | |
+| `tools/make_skin.py` | Rebuilds `plugin/skins/` (the MPC screen: cassette deck, waveform, big labelled buttons) after layout or parameter changes | |
 
 Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `MPC-Link-Mac`, `MPC-Link-Plugin`, and `mpclink-cli` for each MPC generation.
 
@@ -47,7 +48,9 @@ If `find` gets no answer (some routers block broadcasts), add `-h <Mac IP>`.
   - `GET /api/hello`
   - `GET /api/list?format=tsv`, one `size<TAB>mtime<TAB>path` line per file, newest first
   - `GET /api/file?path=<p>`
-  - `PUT /api/upload?path=<p>`
+  - `PUT /api/upload?path=<p>`, or `&dest=gpp` for `Beats/Get Producers Paid/` (drafts for the Get Producers Paid app)
+  - `GET /api/preview?path=<p>`, the beat as 16-bit stereo 44.1 kHz WAV for the cassette (converted with `afconvert` on the Mac)
+  - `GET /api/stems?format=tsv` (stems folders: `files<TAB>mtime<TAB>path`) and `POST /api/stems/send?path=<folder>` (the Mac copies it to `Get Producers Paid/Stems/`)
   - `GET /api/inbox`, files queued from the phone, then `POST /api/inbox/ack?path=<p>` for each one received
   - phone page: `GET /api/devices`, `POST /api/queue {"device","path"}`
 

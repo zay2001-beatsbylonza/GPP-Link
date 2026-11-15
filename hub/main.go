@@ -36,6 +36,7 @@ const (
 	discoverMsg   = "MPCLINK-DISCOVER 1"
 	maxUpload     = 4 << 30 // 4 GB
 	inboxDirName  = "From MPC"
+	gppDirName    = "Get Producers Paid" // beats waiting to go to the Get Producers Paid app as drafts
 )
 
 //go:embed web/index.html
@@ -59,6 +60,7 @@ type hub struct {
 	mu      sync.Mutex
 	devices map[string]time.Time // MPC name -> last seen
 	queue   map[string][]string  // MPC name -> paths waiting for it
+	cue     map[string]string    // MPC name -> beat picked on the phone for its Mac Beat picker
 }
 
 type entry struct {
@@ -93,7 +95,7 @@ func main() {
 	}
 
 	h := &hub{root: root, name: hubName, port: *port,
-		devices: map[string]time.Time{}, queue: map[string][]string{}}
+		devices: map[string]time.Time{}, queue: map[string][]string{}, cue: map[string]string{}}
 
 	go h.discovery()
 
@@ -102,11 +104,16 @@ func main() {
 	mux.HandleFunc("GET /api/hello", h.hello)
 	mux.HandleFunc("GET /api/list", h.list)
 	mux.HandleFunc("GET /api/file", h.download)
+	mux.HandleFunc("GET /api/preview", h.preview)
+	mux.HandleFunc("GET /api/stems", h.listStems)
+	mux.HandleFunc("POST /api/stems/send", h.sendStems)
 	mux.HandleFunc("PUT /api/upload", h.upload)
 	mux.HandleFunc("GET /api/devices", h.listDevices)
 	mux.HandleFunc("GET /api/inbox", h.inbox)
 	mux.HandleFunc("POST /api/inbox/ack", h.ack)
 	mux.HandleFunc("POST /api/queue", h.enqueue)
+	mux.HandleFunc("POST /api/cue", h.setCue)
+	mux.HandleFunc("GET /api/cue", h.takeCue)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *port),
@@ -235,7 +242,9 @@ func (h *hub) download(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, filepath.Base(p), info.ModTime(), f)
 }
 
-// upload stores a file from an MPC in <Beats>/From MPC/<device>/<path>.
+// upload stores a file from an MPC in <Beats>/From MPC/<device>/<path>,
+// or, with ?dest=gpp, in <Beats>/Get Producers Paid/<path> (drafts for the app),
+// or, with ?dest=gpp-stems, in <Beats>/Get Producers Paid/Stems/<path>.
 // ?path= may contain folders (for an MPC project's [ProjectData] folder).
 // An existing file is never overwritten: "kick.wav" becomes "kick (2).wav".
 func (h *hub) upload(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +264,18 @@ func (h *hub) upload(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 400, err)
 		return
 	}
-	target, err := h.safePath(path.Join(inboxDirName, dev, rel))
+	base := path.Join(inboxDirName, dev)
+	switch r.URL.Query().Get("dest") {
+	case "gpp":
+		base = gppDirName
+	case "gpp-stems":
+		base = path.Join(gppDirName, "Stems")
+	case "":
+	default:
+		httpErr(w, 400, errors.New("unknown destination"))
+		return
+	}
+	target, err := h.safePath(path.Join(base, rel))
 	if err != nil {
 		httpErr(w, 400, err)
 		return
@@ -265,7 +285,7 @@ func (h *hub) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// re-check after creating folders, in case one of them was a symlink
-	if _, err := h.safePath(path.Join(inboxDirName, dev, rel)); err != nil {
+	if _, err := h.safePath(path.Join(base, rel)); err != nil {
 		httpErr(w, 400, err)
 		return
 	}
@@ -390,6 +410,51 @@ func (h *hub) enqueue(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+// setCue: the phone page picks a beat for one MPC's "Mac Beat" (cassette and SEND TO MPC).
+func (h *hub) setCue(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Device string `json:"device"`
+		Path   string `json:"path"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 8192)).Decode(&req); err != nil {
+		httpErr(w, 400, err)
+		return
+	}
+	p, err := h.safePath(req.Path)
+	if err != nil {
+		httpErr(w, 400, err)
+		return
+	}
+	if info, err := os.Stat(p); err != nil || info.IsDir() || !allowedExt[strings.ToLower(filepath.Ext(p))] {
+		httpErr(w, 404, errors.New("not found"))
+		return
+	}
+	rel, _ := filepath.Rel(h.root, p)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, known := h.devices[req.Device]; !known {
+		httpErr(w, 404, errors.New("that MPC hasn't connected yet"))
+		return
+	}
+	h.cue[req.Device] = filepath.ToSlash(rel)
+	w.WriteHeader(204)
+}
+
+// takeCue: the MPC asks whether the phone picked a beat for it (once; it's then cleared).
+func (h *hub) takeCue(w http.ResponseWriter, r *http.Request) {
+	dev, ok := h.touch(r)
+	if !ok {
+		httpErr(w, 400, errors.New("send the MPC's name in the X-MPC-Device header"))
+		return
+	}
+	h.mu.Lock()
+	p := h.cue[dev]
+	delete(h.cue, dev)
+	h.mu.Unlock()
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprint(w, p)
+}
+
 // ---------- helpers ----------
 
 // touch records which MPC is talking to us (X-MPC-Device header).
@@ -495,7 +560,7 @@ func httpErr(w http.ResponseWriter, code int, err error) {
 
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/inbox" && r.URL.Path != "/api/devices" { // these poll often
+		if r.URL.Path != "/api/inbox" && r.URL.Path != "/api/devices" && r.URL.Path != "/api/cue" { // these poll often
 			log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.RequestURI())
 		}
 		next.ServeHTTP(w, r)
