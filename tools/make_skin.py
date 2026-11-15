@@ -268,7 +268,10 @@ def main():
             swapped += 1
         if swapped != len(BUTTONS) + 1:
             sys.exit("make_skin: expected %d buttons, found %d" % (len(BUTTONS) + 1, swapped))
-        # the pill switch images are no longer used
+        # the pill switch is no longer used: drop its definition and images (the
+        # validator rejects a definition whose images are missing)
+        if not any(c["componentData"]["type"] == "toggle" for c in tab):
+            locals_[:] = [lc for lc in locals_ if lc["key"] != "toggle"]
         for f in ("toggle_on.png", "toggle_off.png"):
             p = os.path.join(gen, f)
             if os.path.exists(p):
