@@ -30,11 +30,15 @@ Every push builds and tests everything in GitHub Actions (the **Actions** tab). 
 
 ## Run the hub on Windows (in testing)
 
-1. Download `GPP-Link-Windows` (from the release, or the latest Actions run) and unzip it. Read `Windows - Read Me First.txt`.
+1. Download `GPP-Link-Windows` (from the release, or the latest Actions run), unzip it, and move the `GPP Link` folder to your **Desktop** (it doesn't run from Downloads). Read `Windows - Read Me First.txt`.
 2. If your beats aren't in `Music\Beats`, right-click `Start GPP Link.bat` → **Edit** and change the `BEATS_FOLDER` line, for example `set "BEATS_FOLDER=%USERPROFILE%\Desktop\BEATS FOLDER"`.
-3. Double-click `Start GPP Link.bat`. If Windows says **Windows protected your PC**, click **More info → Run anyway** (first time only; it's unsigned).
-4. When Windows Firewall asks, tick **Private networks** and click **Allow**. Your Wi-Fi must be set to **Private** in Windows (Settings → Network & internet → Wi-Fi).
-5. Leave the window open while you use your MPCs. Everything else (the plugin, the phone page) works the same as with a Mac.
+3. Check that `gpp-link-hub.exe` is in the folder. If it's missing, **Windows Security** removed it by mistake (it does that with new, unsigned programs):
+   - Open **Windows Security → Virus & threat protection → Protection history**, click the entry for `gpp-link-hub.exe`, then **Actions → Allow on device** (or **Restore**).
+   - So it doesn't happen again: **Virus & threat protection settings → Manage settings → Exclusions → Add or remove exclusions → Add an exclusion → Folder**, and pick the `GPP Link` folder.
+   - If nothing is listed, delete the folder, add the exclusion first, then download and extract again.
+4. Double-click `Start GPP Link.bat`. If Windows says **Windows protected your PC**, click **More info → Run anyway** (first time only; it's unsigned).
+5. When Windows Firewall asks, tick **Private networks** and click **Allow**. Your Wi-Fi must be set to **Private** in Windows (Settings → Network & internet → Wi-Fi).
+6. Leave the window open while you use your MPCs. Everything else (the plugin, the phone page) works the same as with a Mac.
 
 Cassette previews of MP3, M4A, FLAC and other non-WAV files need the free **ffmpeg** converter on Windows: run `winget install ffmpeg` once, then restart the hub. WAV previews and all sending work without it.
 
