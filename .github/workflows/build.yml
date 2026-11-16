@@ -34,18 +34,18 @@ jobs:
       - name: Build for Apple Silicon and Intel Macs
         working-directory: hub
         run: |
-          mkdir -p "../dist/MPC Link"
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "../dist/MPC Link/mpc-link-hub-apple-silicon" .
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../dist/MPC Link/mpc-link-hub-intel" .
-          cp "Start MPC Link.command" ../README.md "../dist/MPC Link/"
-          chmod +x "../dist/MPC Link/"*.command "../dist/MPC Link/"mpc-link-hub-*
+          mkdir -p "../dist/GPP Link"
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub-apple-silicon" .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub-intel" .
+          cp "Start GPP Link.command" ../README.md "../dist/GPP Link/"
+          chmod +x "../dist/GPP Link/"*.command "../dist/GPP Link/"gpp-link-hub-*
       - name: Zip (keeps the run permissions)
         working-directory: dist
-        run: zip -r -X MPC-Link-Mac.zip "MPC Link"
+        run: zip -r -X GPP-Link-Mac.zip "GPP Link"
       - uses: actions/upload-artifact@v4
         with:
-          name: MPC-Link-Mac
-          path: dist/MPC-Link-Mac.zip
+          name: GPP-Link-Mac
+          path: dist/GPP-Link-Mac.zip
 
   mpc-cli:
     needs: test
@@ -97,15 +97,15 @@ jobs:
       - name: Build the plugin for Gen1 (arm32) and Gen2 (arm64)
         run: python sdk/tools/build.py plugin
       - name: SDK host simulator test
-        run: sdk/.sdk-tools/host_sim plugin/build/native/mpc-link.so test --wav plugin/build/test.wav
+        run: sdk/.sdk-tools/host_sim plugin/build/native/gpp-link.so test --wav plugin/build/test.wav
       - name: Plugin in a pretend MPC, against a live hub
         run: |
           (cd hub && go build -o ../hub-linux .)
           c++ -std=c++17 -Wall -Wextra -O1 -Isdk/framework tests/plugin_host_test.cpp -ldl -lpthread -o plugin_host_test
-          sh tests/plugin_test.sh ./hub-linux ./plugin_host_test plugin/build/native/mpc-link.so
+          sh tests/plugin_test.sh ./hub-linux ./plugin_host_test plugin/build/native/gpp-link.so
       - name: Package
         run: python sdk/tools/package.py plugin --out dist
       - uses: actions/upload-artifact@v4
         with:
-          name: MPC-Link-Plugin
+          name: GPP-Link-Plugin
           path: dist/*.zip
