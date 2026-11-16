@@ -29,7 +29,7 @@ GETTING STARTED
     keep the GPP Link hub window open on your Mac.
 
 QUESTIONS OR IDEAS?
-  github.com/zay2001-beatsbylonza/GPPLink  (Issues tab)
+  github.com/zay2001-beatsbylonza/GPP-Link  (Issues tab)
 
 Watch the walkthrough on YouTube: BeatsbyLonza-Zay
 
