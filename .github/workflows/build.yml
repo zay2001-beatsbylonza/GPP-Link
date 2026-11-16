@@ -2,8 +2,11 @@ name: build
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   test:
@@ -37,7 +40,7 @@ jobs:
           mkdir -p "../dist/GPP Link"
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub-apple-silicon" .
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub-intel" .
-          cp "Start GPP Link.command" ../README.md "../dist/GPP Link/"
+          cp "Start GPP Link.command" ../README.md ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf "../dist/GPP Link/"
           chmod +x "../dist/GPP Link/"*.command "../dist/GPP Link/"gpp-link-hub-*
       - name: Zip (keeps the run permissions)
         working-directory: dist
@@ -103,9 +106,53 @@ jobs:
           (cd hub && go build -o ../hub-linux .)
           c++ -std=c++17 -Wall -Wextra -O1 -Isdk/framework tests/plugin_host_test.cpp -ldl -lpthread -o plugin_host_test
           sh tests/plugin_test.sh ./hub-linux ./plugin_host_test plugin/build/native/gpp-link.so
+      - name: Add the thank-you note and quick start to the plugin folder
+        run: cp THANK-YOU.txt docs/GPP-Link-Quick-Start.pdf "plugin/build/BeatsbyLonza - VST - GPP Link/"
       - name: Package
         run: python sdk/tools/package.py plugin --out dist
       - uses: actions/upload-artifact@v4
         with:
           name: GPP-Link-Plugin
           path: dist/*.zip
+      # The Open MPC catalog's release zips (one per MPC generation, plus Akai's one-folder SDK zip), checked by the catalog's own tools.
+      - name: Get Open MPC's release tools
+        uses: actions/checkout@v4
+        with:
+          repository: open-mpc/mpc-vst-plugins
+          ref: 8ace10a277784689c6d0e3281c0e8d6ddc14e220
+          path: openmpc
+      - name: Make and check the catalog release zips
+        run: |
+          VERSION=$(python3 -c 'import json; print(json.load(open("plugin/plugin.json"))["version"])')
+          case "$GITHUB_REF" in refs/tags/v*) [ "${GITHUB_REF#refs/tags/v}" = "$VERSION" ] || { echo "::error::tag $GITHUB_REF_NAME does not match plugin.json version $VERSION"; exit 1; };; esac
+          mkdir -p release
+          python3 openmpc/tools/sdk_release.py "plugin/build/BeatsbyLonza - VST - GPP Link" --version "$VERSION" \
+            --id gpp-link --repo "$GITHUB_REPOSITORY" --license MIT \
+            --about "Send beats between your MPC, the Beats folder on your Mac and Get Producers Paid, with a cassette player to preview them" \
+            --requires "Wi-Fi turned on on the MPC, and the GPP Link hub running on your Mac on the same network (GPP-Link-Mac in this release)" \
+            -o release
+          for z in release/*-mpc-armv7.zip release/*-mpc-aarch64.zip; do python3 openmpc/tools/catalog_check.py "$z" --catalog; done
+          python3 openmpc/tools/sdk_zip.py "release/GPP-Link-$VERSION-mpc-sdk.zip" release/*-mpc-armv7.zip release/*-mpc-aarch64.zip
+          ls -l release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GPP-Link-Release
+          path: release/*.zip
+
+  # Publish a release on GitHub with a tag like v1.0.0 (matching plugin.json) and this attaches the files to it.
+  release:
+    if: github.event_name == 'release'
+    needs: [mac-hub, plugin]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Attach the files to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber art/GPP-Link-Release/*.zip art/GPP-Link-Mac/*.zip
