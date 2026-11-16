@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build MPC Link's screen ("Plugin Skins"): a cassette deck and big labelled buttons.
+"""Build GPP Link's screen ("Plugin Skins"): a cassette deck and big labelled buttons.
 
 Akai's gen_ui.py draws a bool parameter as a small pill switch. This runs gen_ui.py
 with plugin/ui.json, then swaps each send switch for a full-size button whose
@@ -44,16 +44,20 @@ BUTTONS = {
 WIDE_PICKER, WIDE_EXTRA = "From MPC", 320   # one column = 320 px
 
 # Cassette deck geometry (absolute, on the 1280 x 628 page; the controls start at y 346)
-DECK = (23, 14, 1234, 318)            # x, y, w, h
-LABEL = (60, 30, 1160, 74)            # yellow label strip
-STATUS = (330, 36, 880, 62)           # live status text on the label
-REELS = [(270, 112), (850, 112)]      # top-left of each 130 x 130 reel
-REEL_SIZE, REEL_FRAMES = 130, 12
-BARS_X, BARS_Y, BAR_W, BAR_GAP, BAR_H = 70, 258, 20, 8, 62
+DECK = (382, 12, 516, 322)            # x, y, w, h: a real cassette is about 1.6 : 1
+LABEL = (408, 30, 464, 72)            # yellow label strip across the top: the waveform runs on it
+STATUS = (34, 150, 330, 42)           # live status text, in the display left of the cassette
+REELS = [(450, 108), (706, 104)]      # top-left of each 124 x 124 reel
+REEL_SIZE, REEL_FRAMES = 124, 12
+BARS_X, BARS_Y, BAR_W, BAR_GAP, BAR_H = 452, 38, 20, 6, 56
 WAVE_BARS, WAVE_LEVELS, PLAYHEAD = 32, 17, 16
-PLAY = (996, 252, 236, 70)
-BLUE_DIM, BLUE = (30, 80, 170, 255), (64, 170, 255, 255)
+SHOW_BARS = range(8, 24)              # the 16 bars around the playhead fit a real label
+PLAY = (936, 96, 300, 150)
+DISPLAY = (24, 40, 348, 262)          # the status display box
+MAGENTA = (204, 38, 140, 255)
+BLUE_DIM, BLUE = (70, 110, 200, 255), (18, 52, 200, 255)   # on yellow: ahead = soft blue, played = deep blue
 GREY, DARK = (40, 40, 44, 255), (14, 14, 16, 255)
+SMOKE, EDGE = (44, 48, 58, 255), (128, 134, 146, 255)       # clear smoky plastic
 RED, YELLOW, BLACK = (229, 57, 53, 255), (255, 212, 0, 255), (0, 0, 0, 255)
 W, H = 266, 95                      # the button inside a 278 x 107 cell
 FONT_DIRS = ["/usr/share/fonts/truetype/dejavu", "/System/Library/Fonts/Supplemental", "/Library/Fonts"]
@@ -74,68 +78,109 @@ def button_image(top, big, lit, W=W, H=H):
     d = ImageDraw.Draw(img)
     fill, ink = (YELLOW, BLACK) if lit else (RED, YELLOW)
     d.rounded_rectangle([0, 0, W - 1, H - 1], 12, fill=fill)
-    small = font(False, 20)
-    size = 34
+    k = min(H / 95.0, 1.8)                      # bigger buttons get bigger lettering
+    sm, top_size = int(20 * k), int(34 * k)
+    small = font(False, sm)
+    size = top_size
     while size > 16 and d.textlength(big, font=font(True, size)) > W - 24:
         size -= 1
     bigf = font(True, size)
     tw = d.textlength(top, font=small)
-    gap = (H - 20 - 34) / 3                     # spread the two lines over the button height
+    gap = (H - sm - top_size) / 3               # spread the two lines over the button height
     d.text(((W - tw) / 2, gap), top, font=small, fill=ink)
     bw = d.textlength(big, font=bigf)
-    d.text(((W - bw) / 2, gap * 2 + 20 + (34 - size) / 2), big, font=bigf, fill=ink)
+    d.text(((W - bw) / 2, gap * 2 + sm + (top_size - size) / 2), big, font=bigf, fill=ink)
     return img
 
 
 def deck_art():
-    """The cassette shell and label, drawn once as the page's background."""
+    """The page background: a clear smoky cassette in real proportions in the middle (yellow top
+    strip with the waveform, tape packs, a Get Producers Paid block, the bottom rail), a status
+    display on the left. Original artwork, no other brand names."""
     W0, H0 = 1280, 628
     img = Image.new("RGBA", (W0, H0), BLACK)
     d = ImageDraw.Draw(img)
+
+    # --- left: the display ---
+    dx, dy, dw, dh = DISPLAY
+    d.rounded_rectangle([dx, dy, dx + dw, dy + dh], 16, fill=(18, 18, 22, 255), outline=(70, 70, 76, 255), width=2)
+    d.text((dx + 20, dy + 18), "GPP", font=font(True, 44), fill=RED)
+    d.text((dx + 20 + d.textlength("GPP ", font=font(True, 44)), dy + 18), "LINK", font=font(True, 44), fill=YELLOW)
+    d.text((dx + 22, dy + 70), "BeatsbyLonza", font=font(False, 20), fill=(170, 170, 176, 255))
+    d.line([dx + 20, dy + 104, dx + dw - 20, dy + 104], fill=(60, 60, 66, 255), width=2)
+    d.text((dx + 20, dy + 186), "NOW PLAYING  ·  STATUS", font=font(False, 16), fill=(120, 120, 128, 255))
+
+    # --- middle: the cassette ---
     x, y, w, h = DECK
-    d.rounded_rectangle([x, y, x + w, y + h], 22, fill=GREY, outline=RED, width=3)
-    for sx, sy in [(x + 18, y + 18), (x + w - 18, y + 18), (x + 18, y + h - 18), (x + w - 18, y + h - 18)]:
-        d.ellipse([sx - 7, sy - 7, sx + 7, sy + 7], fill=(90, 90, 96, 255))       # screws
-        d.line([sx - 4, sy, sx + 4, sy], fill=DARK, width=2)
+    d.rounded_rectangle([x, y, x + w, y + h], 18, fill=SMOKE, outline=EDGE, width=4)
+    d.rounded_rectangle([x + 10, y + 8, x + w - 10, y + h - 8], 14, outline=(70, 76, 88, 255), width=2)
+    for k in range(5):
+        d.line([x + 24, y + 5 + k, x + w - 24, y + 5 + k], fill=(90 - 9 * k, 96 - 9 * k, 110 - 9 * k, 255))
+    for sx, sy in [(x + 16, y + 16), (x + w - 16, y + 16), (x + 16, y + h - 16), (x + w - 16, y + h - 16)]:
+        d.ellipse([sx - 7, sy - 7, sx + 7, sy + 7], fill=(150, 154, 162, 255))
+        d.line([sx - 4, sy - 4, sx + 4, sy + 4], fill=DARK, width=2)
     lx, ly, lw, lh = LABEL
-    d.rounded_rectangle([lx, ly, lx + lw, ly + lh], 10, fill=YELLOW)
-    d.text((lx + 22, ly + 8), "MPC LINK", font=font(True, 40), fill=RED)
-    d.text((lx + 24, ly + 50), "BeatsbyLonza", font=font(False, 18), fill=BLACK)
-    # tape window between the reels
-    wx0, wy0 = REELS[0][0] - 20, REELS[0][1] - 4
-    wx1, wy1 = REELS[1][0] + REEL_SIZE + 20, REELS[1][1] + REEL_SIZE + 4
-    d.rounded_rectangle([wx0, wy0, wx1, wy1], 60, fill=DARK, outline=(70, 70, 76, 255), width=2)
+    d.rounded_rectangle([lx, ly, lx + lw, ly + lh], 8, fill=YELLOW)
+    d.text((lx + 10, ly + 14), "A", font=font(True, 36), fill=(110, 90, 10, 255))
+    # the playhead on the strip: the waveform scrolls past it
+    hx = BARS_X + (PLAYHEAD - SHOW_BARS[0]) * (BAR_W + BAR_GAP) - BAR_GAP / 2
+    d.line([hx, ly + 4, hx, ly + lh - 4], fill=RED, width=3)
+    d.polygon([(hx - 7, ly + 2), (hx + 7, ly + 2), (hx, ly + 11)], fill=RED)
+    # orange side tab
+    d.rectangle([x + 14, y + 104, x + 40, y + 170], fill=(232, 160, 30, 255))
+    d.text((x + 18, y + 120), "A", font=font(True, 22), fill=(255, 255, 255, 255))
+    # tape window and the two tape packs
+    cx0, cx1 = REELS[0][0] + REEL_SIZE // 2, REELS[1][0] + REEL_SIZE // 2
     cy = REELS[0][1] + REEL_SIZE // 2
-    d.rectangle([REELS[0][0] + REEL_SIZE // 2, cy + 44, REELS[1][0] + REEL_SIZE // 2, cy + 52], fill=(70, 45, 30, 255))  # tape
-    d.text((wx0 + (wx1 - wx0) / 2 - 38, wy1 - 34), "SIDE A", font=font(True, 20), fill=RED)
-    # waveform window
-    bw = WAVE_BARS * (BAR_W + BAR_GAP) - BAR_GAP
-    d.rounded_rectangle([BARS_X - 12, BARS_Y - 8, BARS_X + bw + 12, BARS_Y + BAR_H + 8], 8, fill=DARK)
-    # the playhead: the waveform scrolls past this line (bars left of it have played)
-    hx = BARS_X + PLAYHEAD * (BAR_W + BAR_GAP) - BAR_GAP / 2
-    d.line([hx, BARS_Y - 6, hx, BARS_Y + BAR_H + 6], fill=RED, width=3)
-    d.polygon([(hx - 8, BARS_Y - 8), (hx + 8, BARS_Y - 8), (hx, BARS_Y)], fill=RED)
+    d.rounded_rectangle([cx0 - 20, cy - 46, cx1 + 20, cy + 46], 30, fill=(26, 28, 36, 255))
+    for c, r in ((cx0, 76), (cx1, 66)):
+        d.ellipse([c - r, cy - r, c + r, cy + r], fill=(58, 40, 30, 255), outline=(84, 60, 44, 255), width=2)
+    # blue triangle under the left reel
+    d.polygon([(x + 30, y + h - 12), (x + 128, y + h - 12), (x + 79, y + 228)], fill=(32, 58, 170, 255))
+    # bottom rail with the head and capstan holes
+    rx0, rx1 = x + 176, x + w - 186
+    d.polygon([(rx0 - 26, y + h - 8), (rx0, y + 258), (rx1, y + 258), (rx1 + 26, y + h - 8)], fill=(74, 80, 92, 255), outline=EDGE)
+    for hx2 in (rx0 + 22, rx0 + 54, rx1 - 54, rx1 - 22):
+        d.ellipse([hx2 - 10, y + 276, hx2 + 10, y + 296], fill=DARK)
+    mid = (rx0 + rx1) // 2
+    d.ellipse([mid - 9, y + 266, mid + 9, y + 284], fill=(150, 154, 162, 255))
+    # Get Producers Paid block, lower right: under the right reel, beside the rail
+    mx0, my0, mx1, my1 = x + w - 160, y + 190, x + w - 16, y + 292
+    d.rounded_rectangle([mx0, my0, mx1, my1], 10, fill=MAGENTA)
+    for txt, size, ty in (("Get Producers", 18, my1 - 58), ("Paid\u2122", 28, my1 - 36)):
+        f = font(True, size)
+        tw = d.textlength(txt, font=f)
+        d.text((mx0 + (mx1 - mx0 - tw) / 2, ty), txt, font=f, fill=(255, 255, 255, 255))
     return img
 
 
 def reel_strip():
-    """A reel hub with three spokes, turning 120 degrees over the strip (it repeats every 120)."""
+    """A yellow reel: a ring of holes around a black eight-tooth hub with a silver pin. Eight teeth
+    and 24 holes repeat every 45 degrees, so 12 frames over 45 degrees loop without a jump."""
     import math
     S = REEL_SIZE
     strip = Image.new("RGBA", (S, S * REEL_FRAMES), (0, 0, 0, 0))
     for f in range(REEL_FRAMES):
-        fr = Image.new("RGBA", (S * 2, S * 2), (0, 0, 0, 0))       # drawn at 2x, then smoothed down
+        fr = Image.new("RGBA", (S * 2, S * 2), (0, 0, 0, 0))          # drawn at 2x, then smoothed down
         d = ImageDraw.Draw(fr)
-        c, r = S, S - 6
-        d.ellipse([c - r, c - r, c + r, c + r], fill=(26, 26, 28, 255), outline=(110, 110, 116, 255), width=6)
-        d.ellipse([c - 70, c - 70, c + 70, c + 70], fill=(225, 225, 228, 255))
-        d.ellipse([c - 30, c - 30, c + 30, c + 30], fill=DARK)
-        a0 = f * (2 * math.pi / 3) / REEL_FRAMES
-        for k in range(3):
-            a = a0 + k * 2 * math.pi / 3
-            x1, y1 = c + 32 * math.cos(a), c + 32 * math.sin(a)
-            x2, y2 = c + 68 * math.cos(a), c + 68 * math.sin(a)
-            d.line([x1, y1, x2, y2], fill=RED, width=14)
+        c = S
+        k2 = S / 140.0                                                    # drawn for 140 px, scaled
+        a0 = f * (math.pi / 4) / REEL_FRAMES
+        d.ellipse([c - 120 * k2, c - 120 * k2, c + 120 * k2, c + 120 * k2], fill=(236, 196, 58, 255), outline=(190, 150, 30, 255), width=4)
+        d.ellipse([c - 92 * k2, c - 92 * k2, c + 92 * k2, c + 92 * k2], outline=(200, 160, 36, 255), width=4)
+        for k in range(24):                                              # the ring of holes
+            a = a0 + k * 2 * math.pi / 24
+            hx, hy = c + 106 * k2 * math.cos(a), c + 106 * k2 * math.sin(a)
+            d.ellipse([hx - 6 * k2, hy - 6 * k2, hx + 6 * k2, hy + 6 * k2], fill=(120, 60, 40, 255))
+        d.ellipse([c - 74 * k2, c - 74 * k2, c + 74 * k2, c + 74 * k2], fill=(18, 18, 20, 255))
+        for k in range(8):                                               # the hub's teeth
+            a = a0 + k * 2 * math.pi / 8
+            pts = []
+            for da, rr in ((-0.16, 46 * k2), (0.16, 46 * k2), (0.12, 68 * k2), (-0.12, 68 * k2)):
+                pts.append((c + rr * math.cos(a + da), c + rr * math.sin(a + da)))
+            d.polygon(pts, fill=(236, 196, 58, 255))
+        d.ellipse([c - 44 * k2, c - 44 * k2, c + 44 * k2, c + 44 * k2], fill=(10, 10, 12, 255))
+        d.ellipse([c - 14 * k2, c - 14 * k2, c + 14 * k2, c + 14 * k2], fill=(225, 228, 235, 255))
         strip.paste(fr.resize((S, S), Image.LANCZOS), (0, f * S))
     return strip
 
@@ -209,13 +254,13 @@ def main():
         for k, (rx, ry) in enumerate(REELS):
             deck.append(image_entry("reel %d" % (k + 1), "reel.png", rx, ry, REEL_SIZE, REEL_SIZE,
                                     REEL_FRAMES, index["Reel"]))
-        for b in range(WAVE_BARS):
-            deck.append(image_entry("wave %02d" % (b + 1), "wavebar.png", BARS_X + b * (BAR_W + BAR_GAP), BARS_Y,
+        for b in SHOW_BARS:
+            deck.append(image_entry("wave %02d" % (b + 1), "wavebar.png", BARS_X + (b - SHOW_BARS[0]) * (BAR_W + BAR_GAP), BARS_Y,
                                     BAR_W, BAR_H, 2 * WAVE_LEVELS, index["Wave %02d" % (b + 1)]))
         status = copy.deepcopy(value_label)
         status["componentData"]["name"] = "status"
-        status["componentData"]["data"]["textStyle"]["colour"] = "ff000000"
-        status["componentData"]["data"]["textStyle"]["font"]["height"] = 34.0
+        status["componentData"]["data"]["textStyle"]["colour"] = "ffffffff"
+        status["componentData"]["data"]["textStyle"]["font"]["height"] = 19.0
         status["handle remapping"] = {"version": 1, "map": [{"key": "Data", "value": "Parameter %d" % index["Status"]}]}
         status["bounds"] = bounds("No", *STATUS)
         deck.append(status)
@@ -225,6 +270,11 @@ def main():
         play["bounds"]["bounds"] = "%d %d %d %d" % (PLAY[0] - 6, PLAY[1] - 6, PLAY[2] + 12, PLAY[3] + 12)
         deck.append(play)
         tab[0:0] = deck                                   # behind the controls, background first
+
+        # File pickers browse with the Q-Link / data wheel only: drop the pop-up knob
+        # (double tap / Enter) that the MPC would otherwise show over them.
+        slider_def0 = next(lc["value"] for lc in locals_ if lc["key"] == "sliderWithFocus")
+        slider_def0["actions"] = [a for a in slider_def0["actions"] if a.get("handler") != "Show Overlay"]
 
         # "From MPC" feeds two buttons (SEND TO FOLDER and SEND TO GET PRODUCERS PAID):
         # stretch it across both columns

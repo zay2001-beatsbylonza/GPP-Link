@@ -1,5 +1,5 @@
 {
-  "name": "MPC Link",
+  "name": "GPP Link",
   "manufacturer": "BeatsbyLonza",
   "version": "1.0.0",
   "format": "vst2",
@@ -8,9 +8,9 @@
   "numInputs": 2,
   "numOutputs": 2,
   "category": "Effect",
-  "file32": "VST/mpc-link-arm32.so",
-  "file64": "VST/mpc-link-arm64.so",
-  "description": "MPC Link: send files between this MPC and the Beats folder on your Mac over Wi-Fi (needs the MPC Link hub on the Mac).",
+  "file32": "VST/gpp-link-arm32.so",
+  "file64": "VST/gpp-link-arm64.so",
+  "description": "GPP Link: send files between this MPC and the Beats folder on your Mac over Wi-Fi (needs the GPP Link hub on the Mac).",
   "author": "BeatsbyLonza",
   "url": "https://github.com/zay2001-beatsbylonza/MPCLink",
   "license": "MIT"

@@ -1,10 +1,10 @@
-// MPC Link hub: shares one folder on your Mac with the MPCs on your Wi-Fi.
+// GPP Link hub: shares one folder on your Mac with the MPCs on your Wi-Fi.
 //
 // MPCs send files into   <Beats>/From MPC/<MPC name>/
 // MPCs pull files out of the whole Beats folder (audio, MIDI and MPC files only).
 // A phone or computer can open http://<mac>:47800 to queue files for a given MPC.
 //
-// Standard library only. Build: go build -o mpc-link-hub .
+// Standard library only. Build: go build -o gpp-link-hub .
 package main
 
 import (
@@ -120,7 +120,7 @@ func main() {
 		Handler:           logRequests(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	fmt.Printf("MPC Link hub %s\n", version)
+	fmt.Printf("GPP Link hub %s\n", version)
 	fmt.Printf("Sharing:   %s\n", root)
 	fmt.Printf("Hub name:  %s\n", hubName)
 	for _, a := range lanAddrs() {

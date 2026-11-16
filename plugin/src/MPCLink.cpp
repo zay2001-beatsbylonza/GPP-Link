@@ -1,4 +1,4 @@
-// MPC Link - move beats between this MPC, the Beats folder on your Mac, and
+// GPP Link - move beats between this MPC, the Beats folder on your Mac, and
 // the Get Producers Paid app. By BeatsbyLonza. Built on Akai's MPC Plugin SDK (MIT).
 //
 // The screen:
@@ -25,8 +25,8 @@
 // Audio passes straight through (plus the cassette preview when playing), so the
 // plugin can sit on any track. Network and disk work happen on a background
 // thread; the audio thread only reads a ready-decoded buffer.
-// It finds the MPC Link hub by UDP broadcast, or reads the Mac's address from
-// "<drive>/MPC Link hub.txt" when broadcasts are blocked.
+// It finds the GPP Link hub by UDP broadcast, or reads the Mac's address from
+// "<drive>/GPP Link hub.txt" when broadcasts are blocked.
 // <drive> is the drive this plugin is installed on (the one holding
 // "VST2 Plugins"), so it works on every MPC model without guessing paths.
 //
@@ -329,7 +329,7 @@ private:
     static mpc::PluginInfo makeInfo()
     {
         mpc::PluginInfo info;
-        info.name         = "MPC Link";
+        info.name         = "GPP Link";
         info.vendor       = "BeatsbyLonza";   // must match plugin.json "manufacturer"
         info.uniqueId     = MPC_FOURCC(kUid[0], kUid[1], kUid[2], kUid[3]);
         info.version      = 1000;
@@ -364,7 +364,7 @@ private:
         if (drive.empty()) drive = "/tmp";
         inboxDir_  = drive + "/From Computer";
         outboxDir_ = drive + "/To Computer";
-        hubFile_   = drive + "/MPC Link hub.txt";
+        hubFile_   = drive + "/GPP Link hub.txt";
         makeDirs(inboxDir_);
         makeDirs(outboxDir_);
 

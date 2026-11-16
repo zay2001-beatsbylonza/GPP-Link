@@ -1,4 +1,4 @@
-/* mpclink: MPC side of MPC Link. See mpclink.h. */
+/* mpclink: MPC side of GPP Link. See mpclink.h. */
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
 #include "mpclink.h"

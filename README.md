@@ -1,4 +1,4 @@
-# MPC Link
+# GPP Link
 
 Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 
@@ -16,15 +16,37 @@ Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 | `tests/` | End-to-end tests GitHub runs on every push | |
 | `tools/make_skin.py` | Rebuilds `plugin/skins/` (the MPC screen: cassette deck, waveform, big labelled buttons) after layout or parameter changes | |
 
-Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `MPC-Link-Mac`, `MPC-Link-Plugin`, and `mpclink-cli` for each MPC generation.
+Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `GPP-Link-Mac`, `GPP-Link-Plugin`, and `mpclink-cli` for each MPC generation.
 
 ## Run the hub on the Mac
 
-1. Download `MPC-Link-Mac` from the latest Actions run and unzip it.
-2. If your beats aren't in `~/Music/Beats`, open `Start MPC Link.command` in TextEdit and change `BEATS_FOLDER`.
-3. Right-click `Start MPC Link.command` → **Open** → **Open** (first time only; it's unsigned).
+1. Download `GPP-Link-Mac` from the latest Actions run and unzip it.
+2. If your beats aren't in `~/Music/Beats`, open `Start GPP Link.command` in TextEdit and change `BEATS_FOLDER`.
+3. Right-click `Start GPP Link.command` → **Open** → **Open** (first time only; it's unsigned).
 4. When macOS asks whether to accept incoming network connections, click **Allow**.
-5. Open the address it prints on your phone to see the phone page.
+5. The window shows your folder, the hub name and an **Open:** address. Leave the window open while you use your MPCs.
+
+## Connect your phone
+
+The phone page lets you browse your Beats folder and send beats to any MPC that has GPP Link open.
+
+1. Put your phone on the **same Wi-Fi** as your computer.
+2. In the hub window, find the **Open:** line, for example `http://192.168.1.50:47800`. Yours will be different; use the one your window shows.
+3. On the phone, open **Safari** and type that address exactly, **starting with `http://`**.
+4. Tap **Share → Add to Home Screen**, so next time it's one tap.
+5. Find a beat (or search), then tap:
+   - **Cue**: selects it in **Computer Files** on that MPC, so you can PLAY or SEND TO MPC there.
+   - **Send to <MPC>**: sends it straight to that MPC's `From Computer` folder. Each MPC with GPP Link open has its own button.
+
+If the page won't load:
+
+- Check the hub window is still open.
+- Make sure you typed `http://` and the exact address.
+- If two **Open:** lines appear, try the other one.
+- The address can change after your router restarts, so check the hub window again.
+- If you clicked **Deny** when macOS asked about incoming connections, allow it in **System Settings → Network → Firewall**.
+
+A step-by-step guide with pictures is in [`docs/GPP-Link-How-To-Guide.pdf`](docs/GPP-Link-How-To-Guide.pdf).
 
 ## Test from an MPC before the plugin exists
 

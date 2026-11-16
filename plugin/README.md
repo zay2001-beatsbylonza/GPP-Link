@@ -1,21 +1,21 @@
-# MPC Link (plugin)
+# GPP Link (plugin)
 
 Send files between this MPC and the Beats folder on your Mac, over Wi-Fi. By BeatsbyLonza.
 
-Needs the **MPC Link hub** running on the Mac (`Start MPC Link.command`), with the Mac and the MPC on the same network.
+Needs the **GPP Link hub** running on the Mac (`Start GPP Link.command`), with the Mac and the MPC on the same network.
 
 ## Install
 
 1. The MPC must run **MPC OS 3.10.1 or later**.
 2. On the MPC: **Menu → Preferences → Enhancements**, turn on **Enable Enhancements** and **External Plugin Support**. Wait a few seconds, then restart.
-3. Unzip the download. Copy the `BeatsbyLonza - VST - MPC Link` folder into a folder named `VST2 Plugins` on the MPC's **internal drive** (create it if needed).
+3. Unzip the download. Copy the `BeatsbyLonza - VST - GPP Link` folder into a folder named `VST2 Plugins` on the MPC's **internal drive** (create it if needed).
    - **MPC XL and Live III:** connect USB, switch the MPC to **Controller Mode**, and the internal drive appears on the Mac as **MPC User**. Copy it there, eject, and go back to Standalone.
-   - **Other MPCs:** use the Open MPC Plugin Manager, or Developer mode with an SFTP app.
+   - **Other MPCs (Key 37, Live II and other Gen 1):** put a `VST2 Plugins` folder at the top of a **USB stick or SD card** (formatted exFAT), copy the folder into it, and put it in the MPC. Or use the Open MPC Plugin Manager.
 4. Restart the MPC.
 
 ## Use
 
-On any track, add an insert: **External VST Plugins → BeatsbyLonza → MPC Link**. Audio passes straight through, so the track sounds the same.
+On any track, add an insert: **External VST Plugins → BeatsbyLonza → GPP Link**. Audio passes straight through, so the track sounds the same.
 
 ### The cassette deck
 
@@ -40,6 +40,8 @@ The cassette label shows the connection (`On <your Mac>`) and what just happened
 
 Files sent from the phone page arrive in `From Computer` by themselves, and the lists refresh on their own.
 
+**Phone page:** on the same Wi-Fi, type the hub window's **Open:** address into Safari, starting with `http://` (for example `http://192.168.1.50:47800`). Then tap **Share → Add to Home Screen**. Full steps are in the main README under *Connect your phone*.
+
 Folders on the MPC drive the plugin is installed on:
 
 - `From Computer/`: files from the Mac land here. Load them from the MPC browser.
@@ -51,7 +53,7 @@ Nothing on either side is ever overwritten; a second `kick.wav` becomes `kick (2
 
 ## If it says "No Mac found"
 
-Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `MPC Link hub.txt` at the top of the MPC's drive, next to `VST2 Plugins`, containing just the Mac's address from the hub window, for example `192.168.1.139`. The plugin tries again every few seconds.
+Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `GPP Link hub.txt` at the top of the MPC's drive, next to `VST2 Plugins`, containing just the Mac's address from the hub window, for example `192.168.1.50`. The plugin tries again every few seconds.
 
 ## Notes
 

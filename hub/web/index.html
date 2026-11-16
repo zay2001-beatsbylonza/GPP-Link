@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MPC Link</title>
+<title>GPP Link</title>
 <style>
   :root { --bg:#000; --card:#111; --ink:#fff; --dim:#9a9a9a; --line:#2a2a2a; --accent:#e53935; --yellow:#ffd400; --ok:#ffd400; }
   * { box-sizing:border-box; }
@@ -32,18 +32,25 @@
   button.cue { border:1px solid var(--yellow); background:transparent; color:var(--yellow); border-radius:8px; padding:7px 10px; font:inherit; font-weight:600; cursor:pointer; }
   button.cue:disabled { opacity:.35; cursor:default; }
   button.send.done { background:var(--yellow); color:#000; }
+  /* phones: name on its own line, buttons under it, so beat names aren't cut off */
+  @media (max-width: 560px) {
+    li { flex-wrap: wrap; }
+    .f { flex: 1 1 100%; }
+    .f b, .f i { white-space: normal; overflow-wrap: anywhere; }
+    button.send { flex: 1; }
+  }
   #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--yellow); color:#000; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
   #toast.show { opacity:1; }
 </style>
 </head>
 <body>
 <header>
-  <h1>MPC <span>Link</span></h1>
+  <h1>GPP <span>Link</span></h1>
   <div class="sub" id="hubline">Connecting…</div>
 </header>
 <main>
   <h2>Send to</h2>
-  <div class="mpcs" id="mpcs"><span class="empty">No MPC connected yet. Open the MPC Link plugin on an MPC.</span></div>
+  <div class="mpcs" id="mpcs"><span class="empty">No MPC connected yet. Open the GPP Link plugin on an MPC.</span></div>
 
   <h2>Beats folder</h2>
   <input type="search" id="q" placeholder="Search beats, samples, projects…" autocomplete="off">
@@ -67,7 +74,7 @@ async function loadHello() {
 async function loadDevices() {
   devices = await (await fetch('/api/devices')).json();
   const box = $('mpcs');
-  if (!devices.length) { box.innerHTML = '<span class="empty">No MPC connected yet. Open the MPC Link plugin on an MPC.</span>'; target = null; renderFiles(); return; }
+  if (!devices.length) { box.innerHTML = '<span class="empty">No MPC connected yet. Open the GPP Link plugin on an MPC.</span>'; target = null; renderFiles(); return; }
   if (!devices.some(d => d.name === target)) target = devices[0].name;
   box.innerHTML = devices.map(d =>
     `<button class="mpc ${d.name===target?'on':''}" data-n="${esc(d.name)}">${esc(d.name)}<small>${d.waiting ? d.waiting+' waiting' : ago(d.lastSeen)}</small></button>`).join('');

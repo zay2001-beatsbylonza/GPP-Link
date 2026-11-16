@@ -16,20 +16,6 @@
         "handler": "Q-Link",
         "handleName": "Data",
         "additionalData": ""
-       },
-       {
-        "version": 1,
-        "onAction": "Double Click",
-        "handler": "Show Overlay",
-        "handleName": "Data",
-        "additionalData": "knob overlay"
-       },
-       {
-        "version": 1,
-        "onAction": "Enter Pressed",
-        "handler": "Show Overlay",
-        "handleName": "Data",
-        "additionalData": "knob overlay"
        }
       ],
       "backgroundData": {
@@ -293,20 +279,6 @@
         "handler": "Q-Link",
         "handleName": "Data",
         "additionalData": ""
-       },
-       {
-        "version": 1,
-        "onAction": "Double Click",
-        "handler": "Show Overlay",
-        "handleName": "Data",
-        "additionalData": "knob overlay"
-       },
-       {
-        "version": 1,
-        "onAction": "Enter Pressed",
-        "handler": "Show Overlay",
-        "handleName": "Data",
-        "additionalData": "knob overlay"
        }
       ],
       "backgroundData": {
@@ -468,7 +440,7 @@
          "showWhenDataModelInvalid": "Show",
          "whenVisible": "Always",
          "boundsType": "Absolute",
-         "bounds": "6 6 236 70"
+         "bounds": "6 6 300 150"
         }
        }
       ]
@@ -971,7 +943,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "270 112 130 130"
+        "bounds": "450 108 124 124"
        }
       },
       {
@@ -1004,271 +976,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "850 112 130 130"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 01",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 10"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "70 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 02",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 11"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "98 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 03",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 12"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "126 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 04",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 13"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "154 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 05",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 14"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "182 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 06",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 15"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "210 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 07",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 16"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "238 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 08",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 17"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "266 258 20 62"
+        "bounds": "706 104 124 124"
        }
       },
       {
@@ -1301,7 +1009,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "294 258 20 62"
+        "bounds": "452 38 20 56"
        }
       },
       {
@@ -1334,7 +1042,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "322 258 20 62"
+        "bounds": "478 38 20 56"
        }
       },
       {
@@ -1367,7 +1075,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "350 258 20 62"
+        "bounds": "504 38 20 56"
        }
       },
       {
@@ -1400,7 +1108,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "378 258 20 62"
+        "bounds": "530 38 20 56"
        }
       },
       {
@@ -1433,7 +1141,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "406 258 20 62"
+        "bounds": "556 38 20 56"
        }
       },
       {
@@ -1466,7 +1174,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "434 258 20 62"
+        "bounds": "582 38 20 56"
        }
       },
       {
@@ -1499,7 +1207,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "462 258 20 62"
+        "bounds": "608 38 20 56"
        }
       },
       {
@@ -1532,7 +1240,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "490 258 20 62"
+        "bounds": "634 38 20 56"
        }
       },
       {
@@ -1565,7 +1273,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "518 258 20 62"
+        "bounds": "660 38 20 56"
        }
       },
       {
@@ -1598,7 +1306,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "546 258 20 62"
+        "bounds": "686 38 20 56"
        }
       },
       {
@@ -1631,7 +1339,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "574 258 20 62"
+        "bounds": "712 38 20 56"
        }
       },
       {
@@ -1664,7 +1372,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "602 258 20 62"
+        "bounds": "738 38 20 56"
        }
       },
       {
@@ -1697,7 +1405,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "630 258 20 62"
+        "bounds": "764 38 20 56"
        }
       },
       {
@@ -1730,7 +1438,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "658 258 20 62"
+        "bounds": "790 38 20 56"
        }
       },
       {
@@ -1763,7 +1471,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "686 258 20 62"
+        "bounds": "816 38 20 56"
        }
       },
       {
@@ -1796,271 +1504,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "714 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 25",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 34"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "742 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 26",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 35"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "770 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 27",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 36"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "798 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 28",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 37"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "826 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 29",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 38"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "854 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 30",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 39"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "882 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 31",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 40"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "910 258 20 62"
-       }
-      },
-      {
-       "version": 2,
-       "componentData": {
-        "version": 1,
-        "name": "wave 32",
-        "type": "Image",
-        "data": {
-         "version": 2,
-         "imageType": "FilmStrip",
-         "colour": "0",
-         "image": "wavebar.png",
-         "numFrames": 34,
-         "handleName": "Data"
-        }
-       },
-       "handle remapping": {
-        "version": 1,
-        "map": [
-         {
-          "key": "Data",
-          "value": "Parameter 41"
-         }
-        ]
-       },
-       "bounds": {
-        "version": 1,
-        "acceptsHWFocus": "No",
-        "showWhenDataModelInvalid": "Show",
-        "whenVisible": "Always",
-        "boundsType": "Absolute",
-        "bounds": "938 258 20 62"
+        "bounds": "842 38 20 56"
        }
       },
       {
@@ -2077,9 +1521,9 @@
            "version": 1,
            "name": "Titillium Web",
            "style": "Regular",
-           "height": 34.0
+           "height": 19.0
           },
-          "colour": "ff000000",
+          "colour": "ffffffff",
           "justification": "left",
           "case": "Original"
          },
@@ -2102,7 +1546,7 @@
         "showWhenDataModelInvalid": "Show",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "330 36 880 62"
+        "bounds": "34 150 330 42"
        }
       },
       {
@@ -2131,7 +1575,7 @@
         "showWhenDataModelInvalid": "Hide",
         "whenVisible": "Always",
         "boundsType": "Absolute",
-        "bounds": "990 246 248 82"
+        "bounds": "930 90 312 162"
        }
       },
       {

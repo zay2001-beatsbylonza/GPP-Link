@@ -8,7 +8,7 @@ PLUGIN=$3
 S=$(mktemp -d)
 trap 'kill $HP $QP 2>/dev/null || true; rm -rf "$S"' EXIT
 
-PF="$S/drive/VST2 Plugins/BeatsbyLonza - VST - MPC Link"
+PF="$S/drive/VST2 Plugins/BeatsbyLonza - VST - GPP Link"
 mkdir -p "$S/Beats/Beats 2026" "$PF" "$S/drive/To Computer/Chops"
 cp "$(dirname "$0")/../plugin/plugin.json" "$PF/"
 # a real 3-second WAV (a 220 Hz tone that swells), so the cassette can decode and play it

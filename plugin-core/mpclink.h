@@ -1,5 +1,5 @@
 /*
- * mpclink: the MPC side of MPC Link.
+ * mpclink: the MPC side of GPP Link.
  *
  * Plain C99 + POSIX sockets, no other dependencies, so it builds for both
  * MPC targets (Gen1 armv7, Gen2 aarch64) and links into the VST2 plugin.

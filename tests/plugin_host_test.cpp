@@ -1,9 +1,9 @@
-// A pretend MPC: loads the real MPC Link plugin (.so), runs audio on one thread
+// A pretend MPC: loads the real GPP Link plugin (.so), runs audio on one thread
 // like the MPC does, presses its buttons, and reads its screen text, while an
-// MPC Link hub runs on this machine.
+// GPP Link hub runs on this machine.
 //
 // Build: c++ -std=c++17 -I<sdk>/framework tests/plugin_host_test.cpp -ldl -lpthread -o plugin_host_test
-// Run:   MPC_PLUGIN_FOLDER="<drive>/VST2 Plugins/BeatsbyLonza - VST - MPC Link" ./plugin_host_test <plugin.so> <drive>
+// Run:   MPC_PLUGIN_FOLDER="<drive>/VST2 Plugins/BeatsbyLonza - VST - GPP Link" ./plugin_host_test <plugin.so> <drive>
 #include "mpc_vst2_abi.h"
 
 #include <atomic>
