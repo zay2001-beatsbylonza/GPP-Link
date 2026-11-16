@@ -2,7 +2,7 @@
 
 Send files between this MPC and the Beats folder on your Mac, over Wi-Fi. By BeatsbyLonza.
 
-Needs the **GPP Link hub** running on the Mac (`Start GPP Link.command`), with the Mac and the MPC on the same network.
+Needs the **GPP Link hub** running on the Mac (`Start GPP Link.command`), with the Mac and the MPC on the same network. **Wi-Fi must be turned on on the MPC** (Menu → Preferences → Wi-Fi).
 
 ## Install
 
@@ -10,8 +10,9 @@ Needs the **GPP Link hub** running on the Mac (`Start GPP Link.command`), with t
 2. On the MPC: **Menu → Preferences → Enhancements**, turn on **Enable Enhancements** and **External Plugin Support**. Wait a few seconds, then restart.
 3. Unzip the download. Copy the `BeatsbyLonza - VST - GPP Link` folder into a folder named `VST2 Plugins` on the MPC's **internal drive** (create it if needed).
    - **MPC XL and Live III:** connect USB, switch the MPC to **Controller Mode**, and the internal drive appears on the Mac as **MPC User**. Copy it there, eject, and go back to Standalone.
-   - **Other MPCs (Key 37, Live II and other Gen 1):** put a `VST2 Plugins` folder at the top of a **USB stick or SD card** (formatted exFAT), copy the folder into it, and put it in the MPC. Or use the Open MPC Plugin Manager.
+   - **Gen 1 MPCs (MPC One, One+, Key 37, Live II, MPC X SE):** put a `VST2 Plugins` folder at the top of an **SD card or USB stick** (formatted exFAT), copy the folder into it, and put it in the MPC. Or use the Open MPC Plugin Manager. (Plugins from an SD card are a Gen 1 feature.)
 4. Restart the MPC.
+5. Turn on **Wi-Fi** on the MPC: **Menu → Preferences → Wi-Fi**, and join the same network as your Mac.
 
 ## Use
 
@@ -42,7 +43,7 @@ Files sent from the phone page arrive in `From Computer` by themselves, and the 
 
 **Phone page:** on the same Wi-Fi, type the hub window's **Open:** address into Safari, starting with `http://` (for example `http://192.168.1.50:47800`). Then tap **Share → Add to Home Screen**. Full steps are in the main README under *Connect your phone*.
 
-Folders on the MPC drive the plugin is installed on:
+Folders on the MPC's internal drive (**MPC User**), even when the plugin is installed on an SD card or USB stick, so your beats stay in one place:
 
 - `From Computer/`: files from the Mac land here. Load them from the MPC browser.
 - `To Computer/`: save or export finished beats here to send them. Files stay here after sending.
@@ -53,7 +54,9 @@ Nothing on either side is ever overwritten; a second `kick.wav` becomes `kick (2
 
 ## If it says "No Mac found"
 
-Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `GPP Link hub.txt` at the top of the MPC's drive, next to `VST2 Plugins`, containing just the Mac's address from the hub window, for example `192.168.1.50`. The plugin tries again every few seconds.
+First check that Wi-Fi is turned on on the MPC (Menu → Preferences → Wi-Fi), that it's on the same network as the Mac, and that the hub window is open.
+
+Some routers block the broadcast the plugin uses to find the Mac. Make a text file named `GPP Link hub.txt` at the top of **MPC User** (the MPC's internal drive), containing just the Mac's address from the hub window, for example `192.168.1.50`. The plugin tries again every few seconds.
 
 ## Notes
 

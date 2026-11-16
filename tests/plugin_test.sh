@@ -8,7 +8,8 @@ PLUGIN=$3
 S=$(mktemp -d)
 trap 'kill $HP $QP 2>/dev/null || true; rm -rf "$S"' EXIT
 
-PF="$S/drive/VST2 Plugins/BeatsbyLonza - VST - GPP Link"
+# The plugin is installed on a card; beats live on the internal drive ("MPC User"), $S/drive.
+PF="$S/card/VST2 Plugins/BeatsbyLonza - VST - GPP Link"
 mkdir -p "$S/Beats/Beats 2026" "$PF" "$S/drive/To Computer/Chops"
 cp "$(dirname "$0")/../plugin/plugin.json" "$PF/"
 # a real 3-second WAV (a 220 Hz tone that swells), so the cassette can decode and play it
@@ -48,7 +49,8 @@ sleep 0.5
 ) &
 QP=$!
 
-MPC_PLUGIN_FOLDER="$PF" timeout 150 "$HOSTTEST" "$PLUGIN" "$S/drive"
+MPCLINK_USER_DRIVE="$S/drive" MPC_PLUGIN_FOLDER="$PF" timeout 150 "$HOSTTEST" "$PLUGIN" "$S/drive"
+[ ! -e "$S/card/From Computer" ] && [ ! -e "$S/card/To Computer" ] || { echo "FAIL: folders made on the card, not the internal drive"; exit 1; }
 [ -f "$S/drive/To Computer/notes.txt" ] || { echo "FAIL: non-audio file was touched"; exit 1; }
 [ -f "$S/Beats/From MPC/"*"/Chops/snare.wav" ] || { echo "FAIL: subfolder not kept on the Mac"; exit 1; }
 [ -f "$S/Beats/Get Producers Paid/my chop #1.wav" ] || { echo "FAIL: GPP file not in Get Producers Paid"; exit 1; }

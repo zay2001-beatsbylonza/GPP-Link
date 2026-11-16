@@ -498,23 +498,25 @@ int mpclink_poll_inbox(mpclink_ctx *ctx, const char *dest_dir) {
     return (r == MPCLINK_ERR_NETWORK || r == MPCLINK_ERR_CANCELLED) ? r : count;
 }
 
-const char *mpclink_default_dest(void) {
-    /* Internal drive as MPC's browser shows it. Confirm on each model:
-     * Gen1 is believed to mount it at /media/az01-internal, Gen2 at /nvme. */
-    static const char *candidates[] = {
-        "/media/az01-internal/From Computer",
-        "/nvme/From Computer",
-        "/sdcard/From Computer",
-    };
-    struct stat st;
+const char *mpclink_user_drive(void) {
+    const char *env = getenv("MPCLINK_USER_DRIVE");
+    if (env && *env) return env;
+    static const char *candidates[] = { "/nvme", "/storage", "/sdcard" };
+    struct stat root, st;
+    if (stat("/", &root) != 0) return NULL;
     for (size_t i = 0; i < sizeof candidates / sizeof *candidates; i++) {
-        char parent[256];
-        copy_str(parent, sizeof parent, candidates[i]);
-        char *slash = strrchr(parent, '/');
-        *slash = 0;
-        if (stat(parent, &st) == 0 && S_ISDIR(st.st_mode)) return candidates[i];
+        if (stat(candidates[i], &st) == 0 && S_ISDIR(st.st_mode) &&
+            st.st_dev != root.st_dev && access(candidates[i], W_OK) == 0)
+            return candidates[i];
     }
-    return "/tmp/From Computer";
+    return NULL;
+}
+
+const char *mpclink_default_dest(void) {
+    static char dest[512];
+    const char *drive = mpclink_user_drive();
+    snprintf(dest, sizeof dest, "%s/From Computer", drive ? drive : "/tmp");
+    return dest;
 }
 
 const char *mpclink_strerror(int s) {

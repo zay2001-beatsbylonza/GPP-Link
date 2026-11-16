@@ -2,6 +2,8 @@
 
 Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 
+**Turn on Wi-Fi on each MPC** (Menu → Preferences → Wi-Fi) and join the same network as your Mac. GPP Link can't reach the Mac without it.
+
 - **MPC → Mac:** files land in `Beats/From MPC/<MPC name>/`. Nothing on the Mac is ever overwritten; a second `kick.wav` becomes `kick (2).wav`.
 - **Mac → MPC:** each MPC pulls files from the Beats folder into `From Computer` on its internal drive, picked on the MPC or sent from your phone.
 - Only audio (wav, aif, mp3, flac, ogg, m4a), MIDI and MPC files (xpj, xpm, xal, xpn, …) are shared. The MPCs can't see or touch anything else, or anything outside the Beats folder.
@@ -78,7 +80,7 @@ If `find` gets no answer (some routers block broadcasts), add `-h <Mac IP>`.
 
 ## To confirm on the hardware
 
-- The internal-drive path MPC's browser shows: the core tries `/media/az01-internal`, then `/nvme`, then `/sdcard`.
+- The internal drive (MPC User): the core uses the first writable mount of `/nvme` (Live III, XL), `/storage` (Gen2 without NVMe) or `/sdcard` (Gen1, Force), and falls back to the drive the plugin is installed on.
 - That a plugin can open sockets from inside MPC (the Open MPC docs list web-fetching plugins as supported).
 
 ## Note

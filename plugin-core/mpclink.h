@@ -101,6 +101,14 @@ int mpclink_take_cue(mpclink_ctx *ctx, char *buf, size_t buf_len);
  * Returns the number of files received (>= 0) or an error. */
 int mpclink_poll_inbox(mpclink_ctx *ctx, const char *dest_dir);
 
+/* The MPC's own internal drive, the one the MPC browser and the computer call
+ * "MPC User" ("Force User" on a Force), or NULL when none is found. Tries the
+ * internal drive's mount on each generation: /nvme (Live III, XL), /storage
+ * (Gen2 without NVMe), /sdcard (Gen1 and Force). A candidate counts only if it
+ * is its own writable mount, not an empty folder on the read-only system disk.
+ * MPCLINK_USER_DRIVE in the environment overrides it (tests). */
+const char *mpclink_user_drive(void);
+
 /* Where received files go on this MPC: "<internal drive>/From Computer". */
 const char *mpclink_default_dest(void);
 

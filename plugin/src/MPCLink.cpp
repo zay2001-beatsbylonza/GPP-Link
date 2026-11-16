@@ -27,8 +27,10 @@
 // thread; the audio thread only reads a ready-decoded buffer.
 // It finds the GPP Link hub by UDP broadcast, or reads the Mac's address from
 // "<drive>/GPP Link hub.txt" when broadcasts are blocked.
-// <drive> is the drive this plugin is installed on (the one holding
-// "VST2 Plugins"), so it works on every MPC model without guessing paths.
+// <drive> is the MPC's internal drive ("MPC User"), even when the plugin itself
+// is installed on an SD card or USB stick, so beats stay in one place on each
+// MPC. If no internal drive is found, it is the drive the plugin is installed
+// on (the one holding "VST2 Plugins").
 //
 // Parameter order is FROZEN once released (saved projects store it).
 // Append new parameters at the end only.
@@ -356,15 +358,19 @@ private:
 
     void run()
     {
-        // Find the drive this plugin is installed on: <drive>/VST2 Plugins/<this folder>.
+        // The drive this plugin is installed on: <drive>/VST2 Plugins/<this folder>.
         // (computePluginFolder, not pluginFolder(): no function-local static to destroy at unload.)
         const std::string folder = mpc::detail::computePluginFolder();
-        std::string drive = parentOf(folder);
-        if (baseName(drive) == "VST2 Plugins" || baseName(drive) == "Synths") drive = parentOf(drive);
-        if (drive.empty()) drive = "/tmp";
+        std::string pluginDrive = parentOf(folder);
+        if (baseName(pluginDrive) == "VST2 Plugins" || baseName(pluginDrive) == "Synths") pluginDrive = parentOf(pluginDrive);
+        if (pluginDrive.empty()) pluginDrive = "/tmp";
+        // Beats live on the internal drive (MPC User) when there is one, wherever the plugin is installed.
+        const char *user = mpclink_user_drive();
+        const std::string drive = user ? std::string(user) : pluginDrive;
         inboxDir_  = drive + "/From Computer";
         outboxDir_ = drive + "/To Computer";
         hubFile_   = drive + "/GPP Link hub.txt";
+        hubFile2_  = pluginDrive == drive ? std::string() : pluginDrive + "/GPP Link hub.txt";
         makeDirs(inboxDir_);
         makeDirs(outboxDir_);
 
@@ -422,7 +428,8 @@ private:
     {
         setStatus("Looking for Mac...");
         int r = MPCLINK_ERR_NOT_FOUND;
-        const std::string manual = readFirstLine(hubFile_);
+        std::string manual = readFirstLine(hubFile_);
+        if (manual.empty() && !hubFile2_.empty()) manual = readFirstLine(hubFile2_);
         if (!manual.empty())
         {
             std::string host = manual;
@@ -790,7 +797,7 @@ private:
 
     mpclink_ctx ctx_{};
     std::atomic<bool> connected_{false};
-    std::string inboxDir_, outboxDir_, hubFile_;
+    std::string inboxDir_, outboxDir_, hubFile_, hubFile2_;
 
     std::mutex textMu_;   // guards everything below (read by formatValue on the UI thread)
     std::string status_;

@@ -1,0 +1,27 @@
+THANK YOU
+=========
+
+Thank you for downloading GPP Link.
+
+I made GPP Link so my beats could move between my MPCs and my computer
+without getting in the way of the music. Pick a beat, play it on the
+cassette, press send, and get back to making music. I hope it does the
+same for you.
+
+GPP Link is free and open source. If it helps you, share it with a
+producer friend.
+
+GETTING STARTED
+  - Quick Start: GPP-Link-Quick-Start.pdf (one page)
+  - Full guide with pictures: GPP-Link-How-To-Guide.pdf
+  - Remember: turn on Wi-Fi on your MPC (Menu > Preferences > Wi-Fi) and
+    keep the GPP Link hub window open on your Mac.
+
+QUESTIONS OR IDEAS?
+  github.com/zay2001-beatsbylonza/MPCLink  (Issues tab)
+
+Watch the walkthrough on YouTube: BeatsbyLonza-Zay
+
+Keep creating, and get paid for your work.
+
+- BeatsbyLonza
