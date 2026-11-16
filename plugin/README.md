@@ -62,4 +62,4 @@ Some routers block the broadcast the plugin uses to find the Mac. Make a text fi
 
 - Shares audio (wav, aif, mp3, flac, ogg, m4a), MIDI and MPC files (xpj, xpm, xal, xpn …) only.
 - No password: use it on your own network.
-- Built on Akai's MPC Plugin SDK (MIT). Source: github.com/zay2001-beatsbylonza/MPCLink
+- Built on Akai's MPC Plugin SDK (MIT). Source: github.com/zay2001-beatsbylonza/GPPLink
