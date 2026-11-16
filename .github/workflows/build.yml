@@ -50,6 +50,75 @@ jobs:
           name: GPP-Link-Mac
           path: dist/GPP-Link-Mac.zip
 
+  windows-hub:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Build for Windows (64-bit Intel/AMD and ARM)
+        working-directory: hub
+        run: |
+          mkdir -p "../dist/GPP Link"
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub.exe" .
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o "../dist/GPP Link/gpp-link-hub-arm64.exe" .
+          cp "Start GPP Link.bat" "Windows - Read Me First.txt" ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf "../dist/GPP Link/"
+          # Windows needs CRLF line ends in the .bat and text files
+          sed -i 's/\r*$/\r/' "../dist/GPP Link/Start GPP Link.bat" "../dist/GPP Link/Windows - Read Me First.txt" "../dist/GPP Link/THANK-YOU.txt"
+      - name: Zip
+        working-directory: dist
+        run: zip -r -X GPP-Link-Windows.zip "GPP Link"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GPP-Link-Windows
+          path: dist/GPP-Link-Windows.zip
+
+  # The hub on a real Windows machine: unit tests, then a quick run against a temporary Beats folder.
+  windows-smoke:
+    needs: test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Unit tests on Windows
+        working-directory: hub
+        run: go test ./...
+      - name: Run the hub and talk to it like an MPC
+        working-directory: hub
+        run: |
+          go build -o hub.exe .
+          $beats = Join-Path $env:RUNNER_TEMP "My Beats"
+          New-Item -ItemType Directory -Force -Path (Join-Path $beats "Beats 2026") | Out-Null
+          # a 1-second 16-bit stereo WAV
+          $n = 44100; $data = New-Object byte[] ($n * 4)
+          $hdr = [byte[]](0x52,0x49,0x46,0x46) + [BitConverter]::GetBytes([int](36 + $data.Length)) + [byte[]](0x57,0x41,0x56,0x45,0x66,0x6d,0x74,0x20,16,0,0,0,1,0,2,0) + [BitConverter]::GetBytes([int]44100) + [BitConverter]::GetBytes([int]176400) + [byte[]](4,0,16,0,0x64,0x61,0x74,0x61) + [BitConverter]::GetBytes([int]$data.Length)
+          [IO.File]::WriteAllBytes((Join-Path $beats "Beats 2026\Trap Beat 140.wav"), [byte[]]($hdr + $data))
+          $p = Start-Process -FilePath .\hub.exe -ArgumentList @("--dir", "`"$beats`"", "--name", "WinTest") -PassThru -RedirectStandardOutput hub.out -RedirectStandardError hub.err
+          Start-Sleep -Seconds 2
+          $h = @{ "X-MPC-Device" = "MPC Test" }
+          $hello = Invoke-RestMethod -Uri http://127.0.0.1:47800/api/hello -Headers $h
+          if ($hello.name -ne "WinTest") { throw "hello: $($hello | ConvertTo-Json)" }
+          $list = Invoke-WebRequest -Uri "http://127.0.0.1:47800/api/list?format=tsv" -Headers $h
+          if ($list.Content -notmatch "Beats 2026/Trap Beat 140.wav") { throw "list: $($list.Content)" }
+          $pv = Invoke-WebRequest -Uri "http://127.0.0.1:47800/api/preview?path=Beats%202026/Trap%20Beat%20140.wav" -Headers $h
+          if ($pv.RawContentLength -lt 170000) { throw "preview too short: $($pv.RawContentLength)" }
+          Invoke-WebRequest -Method Put -Uri "http://127.0.0.1:47800/api/upload?path=Chops/snare.wav" -Headers $h -Body ([byte[]](1,2,3)) | Out-Null
+          if (-not (Test-Path (Join-Path $beats "From MPC\MPC Test\Chops\snare.wav"))) { throw "upload did not land" }
+          foreach ($bad in @("..%5Cx.wav", "CON.wav", "C:x.wav", "a.wav:s")) {
+            try { Invoke-WebRequest -Method Put -Uri "http://127.0.0.1:47800/api/upload?path=$bad" -Headers $h -Body ([byte[]](1)) | Out-Null; throw "accepted $bad" }
+            catch { if ($_.Exception.Message -like "accepted*") { throw } }
+          }
+          Stop-Process -Id $p.Id
+          Get-Content hub.out
+          "windows smoke: all checks passed"
+
   mpc-cli:
     needs: test
     runs-on: ubuntu-24.04
@@ -142,7 +211,7 @@ jobs:
   # Publish a release on GitHub with a tag like v1.0.0 (matching plugin.json) and this attaches the files to it.
   release:
     if: github.event_name == 'release'
-    needs: [mac-hub, plugin]
+    needs: [mac-hub, windows-hub, windows-smoke, plugin]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -155,4 +224,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber art/GPP-Link-Release/*.zip art/GPP-Link-Mac/*.zip
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber art/GPP-Link-Release/*.zip art/GPP-Link-Mac/*.zip art/GPP-Link-Windows/*.zip
