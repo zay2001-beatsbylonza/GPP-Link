@@ -1,4 +1,4 @@
-// GPP Link hub: shares one folder on your Mac with the MPCs on your Wi-Fi.
+// GPP Link hub: shares one folder on your Mac or Windows PC with the MPCs on your Wi-Fi.
 //
 // MPCs send files into   <Beats>/From MPC/<MPC name>/
 // MPCs pull files out of the whole Beats folder (audio, MIDI and MPC files only).
@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -483,8 +484,39 @@ func (h *hub) validRel(rel string) (string, error) {
 		if seg == "" || seg == "." || seg == ".." || strings.HasPrefix(seg, ".") {
 			return "", errBadPath
 		}
+		// Windows: no drive letters or alternate streams ("C:x", "a.wav:s"), no
+		// names Windows treats as devices (CON, NUL, COM1 ...), no trailing dot
+		// or space (Windows drops them, so two names could reach one file).
+		if strings.ContainsAny(seg, ":*?\"<>|") || strings.HasSuffix(seg, " ") || strings.HasSuffix(seg, ".") || windowsDevice(seg) {
+			return "", errBadPath
+		}
 	}
 	return rel, nil
+}
+
+// inside reports whether p is root or below it (case-insensitively on Windows,
+// where C:\Users\Me and c:\users\me are the same folder).
+func inside(p, root string) bool {
+	if runtime.GOOS == "windows" {
+		p, root = strings.ToLower(p), strings.ToLower(root)
+	}
+	return p == root || strings.HasPrefix(p, root+string(os.PathSeparator))
+}
+
+func windowsDevice(seg string) bool {
+	base := strings.ToUpper(seg)
+	if i := strings.IndexByte(base, '.'); i >= 0 {
+		base = base[:i]
+	}
+	base = strings.TrimRight(base, " ")
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return true
+	}
+	if len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '0' && base[3] <= '9' {
+		return true
+	}
+	return false
 }
 
 func (h *hub) safePath(rel string) (string, error) {
@@ -497,7 +529,7 @@ func (h *hub) safePath(rel string) (string, error) {
 	check := full
 	for {
 		if r, err := filepath.EvalSymlinks(check); err == nil {
-			if r != h.root && !strings.HasPrefix(r, h.root+string(os.PathSeparator)) {
+			if !inside(r, h.root) {
 				return "", errBadPath
 			}
 			break
@@ -539,14 +571,29 @@ func lanAddrs() []string {
 	var out []string
 	ifs, _ := net.InterfaceAddrs()
 	for _, a := range ifs {
-		if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && !ipn.IP.IsLoopback() {
+		if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && !ipn.IP.IsLoopback() && !ipn.IP.IsLinkLocalUnicast() {
 			out = append(out, ipn.IP.String())
 		}
 	}
 	if len(out) == 0 {
 		out = []string{"localhost"}
 	}
+	// home Wi-Fi addresses (192.168.x.x, 10.x.x.x) first; 172.16-31.x.x is
+	// usually a virtual adapter (WSL, Hyper-V, Docker), so it goes last
+	sort.SliceStable(out, func(i, j int) bool { return addrRank(out[i]) < addrRank(out[j]) })
 	return out
+}
+
+func addrRank(a string) int {
+	switch {
+	case strings.HasPrefix(a, "192.168."):
+		return 0
+	case strings.HasPrefix(a, "10."):
+		return 1
+	case strings.HasPrefix(a, "172."):
+		return 3
+	}
+	return 2
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

@@ -3,7 +3,8 @@ package main
 // Preview audio for the plugin's cassette player: any shared audio file,
 // returned as plain 16-bit stereo 44.1 kHz WAV, so the MPC never needs an
 // MP3/AIFF/FLAC decoder. WAV is converted here; other formats go through
-// macOS's built-in afconvert first.
+// macOS's built-in afconvert first, or ffmpeg when it is installed (Windows,
+// Linux, or a Mac that has it).
 
 import (
 	"bytes"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -56,18 +58,22 @@ func previewPCM(path string) ([]byte, error) {
 			}
 		}
 	}
-	// Not a WAV we can read: let macOS convert it.
-	conv, err := exec.LookPath("afconvert")
-	if err != nil {
-		return nil, errors.New("this file type can only be previewed on a Mac")
-	}
-	tmp, err := os.CreateTemp("", "mpclink-preview-*.wav")
+	// Not a WAV we can read: convert it with afconvert (macOS) or ffmpeg.
+	tmp, err := os.CreateTemp("", "gpplink-preview-*.wav")
 	if err != nil {
 		return nil, err
 	}
 	tmp.Close()
 	defer os.Remove(tmp.Name())
-	cmd := exec.Command(conv, "-f", "WAVE", "-d", fmt.Sprintf("LEI16@%d", previewRate), "-c", "2", path, tmp.Name())
+	var cmd *exec.Cmd
+	if conv, err := exec.LookPath("afconvert"); err == nil {
+		cmd = exec.Command(conv, "-f", "WAVE", "-d", fmt.Sprintf("LEI16@%d", previewRate), "-c", "2", path, tmp.Name())
+	} else if ff := findFFmpeg(); ff != "" {
+		cmd = exec.Command(ff, "-v", "error", "-y", "-i", path, "-t", fmt.Sprint(previewMaxSec), "-vn",
+			"-ac", "2", "-ar", fmt.Sprint(previewRate), "-c:a", "pcm_s16le", "-f", "wav", tmp.Name())
+	} else {
+		return nil, errors.New("to preview this file type, install ffmpeg (Windows: winget install ffmpeg)")
+	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("could not convert for preview: %s", strings.TrimSpace(string(out)))
 	}
@@ -195,4 +201,30 @@ func wavHeader(dataLen int) []byte {
 	copy(h[36:], "data")
 	binary.LittleEndian.PutUint32(h[40:], uint32(dataLen))
 	return h
+}
+
+// findFFmpeg looks for ffmpeg on the PATH, next to the hub, and where winget
+// puts it (a window opened before the install doesn't see the new PATH yet).
+func findFFmpeg() string {
+	name := "ffmpeg"
+	if runtime.GOOS == "windows" {
+		name = "ffmpeg.exe"
+	}
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+	var dirs []string
+	if exe, err := os.Executable(); err == nil {
+		dirs = append(dirs, filepath.Dir(exe))
+	}
+	if la := os.Getenv("LOCALAPPDATA"); la != "" {
+		dirs = append(dirs, filepath.Join(la, "Microsoft", "WinGet", "Links"))
+	}
+	for _, d := range dirs {
+		p := filepath.Join(d, name)
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p
+		}
+	}
+	return ""
 }

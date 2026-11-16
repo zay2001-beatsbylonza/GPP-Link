@@ -1,0 +1,48 @@
+GPP LINK FOR WINDOWS - READ ME FIRST
+====================================
+
+This is the GPP Link hub for a Windows 10 or 11 PC. It does the same job as
+the Mac hub: it shares your Beats folder with your MPCs and your phone over
+Wi-Fi. The MPC plugin is the same one, whichever computer runs the hub.
+
+1. SET YOUR BEATS FOLDER
+   Right-click "Start GPP Link.bat" > Edit (or open it in Notepad).
+   Change the BEATS_FOLDER line to your folder, for example:
+     set "BEATS_FOLDER=%USERPROFILE%\Desktop\BEATS FOLDER"
+   Keep the quote marks exactly as shown. Save and close.
+
+2. START IT
+   Double-click "Start GPP Link.bat".
+   - If Windows says "Windows protected your PC": click More info > Run anyway.
+     (GPP Link isn't signed by Microsoft; this only happens the first time.)
+   - When Windows Firewall asks, tick "Private networks" and click Allow.
+   A black window opens and shows your folder and an Open: address.
+   Leave that window open while you use your MPCs.
+
+3. ON EACH MPC
+   Turn on Wi-Fi (Menu > Preferences > Wi-Fi), on the same network as the PC.
+   Load GPP Link on a track: Insert > External VST Plugins > BeatsbyLonza > GPP Link.
+   The display shows "On" and your PC's name.
+
+4. YOUR PHONE (OPTIONAL)
+   Same Wi-Fi. In Safari, type the Open: address from the hub window,
+   starting with http:// . Then Share > Add to Home Screen.
+
+PREVIEWING MP3, M4A AND FLAC ON THE CASSETTE
+   WAV previews work as they are. For MP3, M4A, FLAC and other formats,
+   install the free ffmpeg converter once: open Command Prompt and type
+     winget install ffmpeg
+   Then close and restart GPP Link. Sending files works without it.
+
+IF THE MPC SAYS "No Mac found"
+   - Check the hub window is open and the MPC's Wi-Fi is on, same network.
+   - Windows must see your Wi-Fi as a Private network:
+     Settings > Network & internet > Wi-Fi > (your network) > Private network.
+   - Still stuck: make a text file named "GPP Link hub.txt" at the top of
+     MPC User holding only the PC's address from the Open: line
+     (for example 192.168.1.50).
+
+Full guides: GPP-Link-Quick-Start.pdf and GPP-Link-How-To-Guide.pdf
+(written for the Mac; on Windows use the steps above for starting the hub).
+
+- BeatsbyLonza

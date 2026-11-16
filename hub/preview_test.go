@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/binary"
 	"math"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
@@ -71,5 +74,31 @@ func TestWavToPCM(t *testing.T) {
 	}
 	if _, err := wavToPCM([]byte("not a wav at all")); err == nil {
 		t.Error("garbage accepted")
+	}
+}
+
+func TestPreviewWithFFmpeg(t *testing.T) {
+	ff := findFFmpeg()
+	if ff == "" {
+		t.Skip("ffmpeg not installed")
+	}
+	dir := t.TempDir()
+	src := filepath.Join(dir, "beat.wav")
+	if err := os.WriteFile(src, makeWav(1, 2, 48000, 16, 48000, func(i, ch int) float64 { return 0.3 * math.Sin(float64(i)/7) }), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mp3 := filepath.Join(dir, "beat.mp3")
+	if out, err := exec.Command(ff, "-v", "error", "-y", "-i", src, mp3).CombinedOutput(); err != nil {
+		t.Skipf("ffmpeg can't make an mp3 here: %s", out)
+	}
+	if _, err := exec.LookPath("afconvert"); err == nil {
+		t.Skip("afconvert is used instead on this machine")
+	}
+	pcm, err := previewPCM(mp3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(pcm) / 4; got < 43000 || got > 46000 {
+		t.Errorf("%d frames from a 1 s mp3, want about 44100", got)
 	}
 }

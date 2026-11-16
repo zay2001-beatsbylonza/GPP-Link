@@ -1,6 +1,6 @@
 # GPP Link
 
-Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
+Send files between your MPCs and the Beats folder on your Mac (or Windows PC, in testing), over Wi-Fi.
 
 **Turn on Wi-Fi on each MPC** (Menu → Preferences → Wi-Fi) and join the same network as your Mac. GPP Link can't reach the Mac without it.
 
@@ -12,13 +12,13 @@ Send files between your MPCs and the Beats folder on your Mac, over Wi-Fi.
 
 | Folder | What it is | Status |
 | --- | --- | --- |
-| `hub/` | The Mac app (Go, no dependencies) plus the phone web page | Working, tested |
+| `hub/` | The computer app for Mac and Windows (Go, no dependencies) plus the phone web page | Mac: working, tested. Windows: built and checked on GitHub's Windows machines, hardware test in progress |
 | `plugin-core/` | C library the MPC plugin uses, and `mpclink-cli` for testing | Working, tested against the hub |
 | `plugin/` | The MPC plugin (VST2, Gen1 + Gen2) on Akai's MPC Plugin SDK; see `plugin/README.md` | Tested in a pretend MPC; first hardware test on the MPC XL |
 | `tests/` | End-to-end tests GitHub runs on every push | |
 | `tools/make_skin.py` | Rebuilds `plugin/skins/` (the MPC screen: cassette deck, waveform, big labelled buttons) after layout or parameter changes | |
 
-Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `GPP-Link-Mac`, `GPP-Link-Plugin`, and `mpclink-cli` for each MPC generation.
+Every push builds and tests everything in GitHub Actions (the **Actions** tab). Each run has downloads at the bottom of its page: `GPP-Link-Mac`, `GPP-Link-Plugin`, `GPP-Link-Windows`, and `mpclink-cli` for each MPC generation.
 
 ## Run the hub on the Mac
 
@@ -27,6 +27,16 @@ Every push builds and tests everything in GitHub Actions (the **Actions** tab). 
 3. Right-click `Start GPP Link.command` → **Open** → **Open** (first time only; it's unsigned).
 4. When macOS asks whether to accept incoming network connections, click **Allow**.
 5. The window shows your folder, the hub name and an **Open:** address. Leave the window open while you use your MPCs.
+
+## Run the hub on Windows (in testing)
+
+1. Download `GPP-Link-Windows` (from the release, or the latest Actions run) and unzip it. Read `Windows - Read Me First.txt`.
+2. If your beats aren't in `Music\Beats`, right-click `Start GPP Link.bat` → **Edit** and change the `BEATS_FOLDER` line, for example `set "BEATS_FOLDER=%USERPROFILE%\Desktop\BEATS FOLDER"`.
+3. Double-click `Start GPP Link.bat`. If Windows says **Windows protected your PC**, click **More info → Run anyway** (first time only; it's unsigned).
+4. When Windows Firewall asks, tick **Private networks** and click **Allow**. Your Wi-Fi must be set to **Private** in Windows (Settings → Network & internet → Wi-Fi).
+5. Leave the window open while you use your MPCs. Everything else (the plugin, the phone page) works the same as with a Mac.
+
+Cassette previews of MP3, M4A, FLAC and other non-WAV files need the free **ffmpeg** converter on Windows: run `winget install ffmpeg` once, then restart the hub. WAV previews and all sending work without it.
 
 ## Connect your phone
 
