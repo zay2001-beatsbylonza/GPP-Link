@@ -50,6 +50,13 @@ Wi-Fi. The MPC plugin is the same one, whichever computer runs the hub.
    Same Wi-Fi. In Safari, type the Open: address from the hub window,
    starting with http:// . Then Share > Add to Home Screen.
 
+7. GET PRODUCERS PAID (OPTIONAL)
+   In the Get Producers Paid app: Producer > Profile > Connect GPP Link >
+   Get pairing code. On this PC, open http://localhost:47800, type the
+   code in the Get Producers Paid box and click Connect. Beats in the
+   Get Producers Paid folder then go to your drafts by themselves. The
+   connection is kept in Windows Credential Manager.
+
 PREVIEWING MP3, M4A AND FLAC ON THE CASSETTE
    WAV previews work as they are. For MP3, M4A, FLAC and other formats,
    install the free ffmpeg converter once: open Command Prompt and type

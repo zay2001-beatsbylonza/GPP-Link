@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	version       = "0.1.0"
+	version       = "0.2.0"
 	defaultPort   = 47800
 	discoveryPort = 47801
 	discoverMsg   = "MPCLINK-DISCOVER 1"
@@ -62,6 +62,8 @@ type hub struct {
 	devices map[string]time.Time // MPC name -> last seen
 	queue   map[string][]string  // MPC name -> paths waiting for it
 	cue     map[string]string    // MPC name -> beat picked on the phone for its Mac Beat picker
+
+	gpp *gppManager // Get Producers Paid drafts uploader (nil if its server address is bad)
 }
 
 type entry struct {
@@ -77,6 +79,11 @@ func main() {
 	dir := flag.String("dir", defDir, "the Beats folder to share")
 	port := flag.Int("port", defaultPort, "HTTP port")
 	name := flag.String("name", "", "name shown on the MPC (default: this computer's name)")
+	defServer := defaultGPPServer
+	if s := os.Getenv("GPP_SERVER"); s != "" {
+		defServer = s
+	}
+	gppServer := flag.String("gpp-server", defServer, "Get Producers Paid server address (or set GPP_SERVER)")
 	flag.Parse()
 
 	root, err := filepath.Abs(expandHome(*dir, home))
@@ -98,6 +105,13 @@ func main() {
 	h := &hub{root: root, name: hubName, port: *port,
 		devices: map[string]time.Time{}, queue: map[string][]string{}, cue: map[string]string{}}
 
+	if m, err := newGPPManager(root, hubName, *gppServer, gppStateDir()); err != nil {
+		log.Printf("Get Producers Paid is off: %v", err)
+	} else {
+		h.gpp = m
+		go m.run()
+	}
+
 	go h.discovery()
 
 	mux := http.NewServeMux()
@@ -115,6 +129,9 @@ func main() {
 	mux.HandleFunc("POST /api/queue", h.enqueue)
 	mux.HandleFunc("POST /api/cue", h.setCue)
 	mux.HandleFunc("GET /api/cue", h.takeCue)
+	mux.HandleFunc("GET /api/gpp", h.gppStatus)
+	mux.HandleFunc("POST /api/gpp/pair", h.gppPair)
+	mux.HandleFunc("POST /api/gpp/disconnect", h.gppDisconnect)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *port),
@@ -126,6 +143,13 @@ func main() {
 	fmt.Printf("Hub name:  %s\n", hubName)
 	for _, a := range lanAddrs() {
 		fmt.Printf("Open:      http://%s:%d   (phone or computer on the same Wi-Fi)\n", a, *port)
+	}
+	if h.gpp != nil {
+		if h.gpp.Status().Connected {
+			fmt.Println("Get Producers Paid: connected. Beats in the Get Producers Paid folder go to your drafts.")
+		} else {
+			fmt.Printf("Get Producers Paid: not connected. To connect, open http://localhost:%d on this computer.\n", *port)
+		}
 	}
 	fmt.Println("Leave this window open while you use the MPCs. Press Ctrl+C to stop.")
 	log.Fatal(srv.ListenAndServe())
@@ -315,6 +339,9 @@ func (h *hub) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	saved, _ := filepath.Rel(h.root, final)
 	log.Printf("received %s from %s (%d bytes)", saved, dev, n)
+	if base != path.Join(inboxDirName, dev) && h.gpp != nil {
+		h.gpp.Kick() // a beat for Get Producers Paid: send it now
+	}
 	writeJSON(w, map[string]any{"saved": filepath.ToSlash(saved), "size": n})
 }
 

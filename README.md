@@ -64,6 +64,25 @@ If the page won't load:
 
 A step-by-step guide with pictures is in [`docs/GPP-Link-How-To-Guide.pdf`](docs/GPP-Link-How-To-Guide.pdf).
 
+## Connect Get Producers Paid
+
+Beats you send with **SEND TO GET PRODUCERS PAID** or **SEND STEMS TO GET PRODUCERS PAID** land in `Get Producers Paid/` in your Beats folder. Connect the hub to your store once, and it uploads each of them to the Get Producers Paid app as a **draft** by itself. Then finish and publish it in the app.
+
+1. In the Get Producers Paid app: **Producer → Profile → Connect GPP Link → Get pairing code**. The code looks like `K7Q4-MZP2` and works once, for 10 minutes.
+2. On the computer the hub runs on, open **http://localhost:47800**. The **Get Producers Paid** box is on the hub page. (A phone can see the box but can't connect or disconnect; that only works on the computer itself.)
+3. Type the code and click **Connect**. The box says **Connected to** your store name.
+
+From then on:
+- Every audio file in `Get Producers Paid/`, and every stem in `Get Producers Paid/Stems/<song>/` (sent as "<song> - <stem>.wav"), goes up as a draft once it has finished writing. Name beats like `Title_140bpm_F#min.wav` and the app fills in the title, BPM and key.
+- Each file goes **once**. The hub remembers what it sent (and the server refuses duplicates too), so restarts don't send anything twice. Beats already in the folder when you connect are sent too.
+- Files the app can't take (over 300 MB, or not audio) are listed in the box and skipped.
+- If you tap **Disconnect** for this computer in the app, the box shows "This hub was disconnected in the app" and uploads stop until you pair again.
+- **Disconnect this computer** on the hub page forgets the connection here; also disconnect it in the app to remove it there.
+
+**Where the connection is kept:** in the macOS Keychain, or Windows Credential Manager on a PC. It can only add drafts to your store: it can't publish, change prices, or see sales, payouts or artists.
+
+**Server address:** `https://app.beatsbylonza.com/api/mpclink`. To use a different one, start the hub with `--gpp-server <address>` or set `GPP_SERVER`.
+
 ## Test from an MPC before the plugin exists
 
 With Developer mode on, copy `mpclink-cli` (the build for that MPC's generation) to the MPC over SFTP, then over SSH:
@@ -86,7 +105,8 @@ If `find` gets no answer (some routers block broadcasts), add `-h <Mac IP>`.
   - `GET /api/hello`
   - `GET /api/list?format=tsv`, one `size<TAB>mtime<TAB>path` line per file, newest first
   - `GET /api/file?path=<p>`
-  - `PUT /api/upload?path=<p>`, or `&dest=gpp` for `Beats/Get Producers Paid/` (drafts for the Get Producers Paid app)
+  - `PUT /api/upload?path=<p>`, or `&dest=gpp` for `Beats/Get Producers Paid/` (the hub uploads these to the Get Producers Paid app as drafts once connected)
+  - `GET /api/gpp` (connection status for the hub page); `POST /api/gpp/pair` and `POST /api/gpp/disconnect` (only from the hub's own computer, with header `X-GPP-Link: 1`)
   - `GET /api/preview?path=<p>`, the beat as 16-bit stereo 44.1 kHz WAV for the cassette (converted with `afconvert` on the Mac)
   - `GET /api/stems?format=tsv` (stems folders: `files<TAB>mtime<TAB>path`) and `POST /api/stems/send?path=<folder>` (the Mac copies it to `Get Producers Paid/Stems/`)
   - `GET /api/inbox`, files queued from the phone, then `POST /api/inbox/ack?path=<p>` for each one received
