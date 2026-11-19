@@ -75,6 +75,21 @@ jobs:
           name: GPP-Link-Windows
           path: dist/GPP-Link-Windows.zip
 
+  # The hub on a real Mac: unit tests, including saving the Get Producers Paid token in the Keychain.
+  mac-smoke:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Unit tests on macOS (including the Keychain)
+        working-directory: hub
+        env:
+          GPP_SECRET_STORE_TEST: '1'
+        run: go test -v -run 'SystemSecretStore|GetProducersPaid' ./... && go test ./...
+
   # The hub on a real Windows machine: unit tests, then a quick run against a temporary Beats folder.
   windows-smoke:
     needs: test
@@ -87,9 +102,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - name: Unit tests on Windows
+      - name: Unit tests on Windows (including Credential Manager)
         working-directory: hub
-        run: go test ./...
+        env:
+          GPP_SECRET_STORE_TEST: '1'
+        run: go test -v -run 'SystemSecretStore|GetProducersPaid' ./... && go test ./...
       - name: Run the hub and talk to it like an MPC
         working-directory: hub
         run: |
@@ -211,7 +228,7 @@ jobs:
   # Publish a release on GitHub with a tag like v1.0.0 (matching plugin.json) and this attaches the files to it.
   release:
     if: github.event_name == 'release'
-    needs: [mac-hub, windows-hub, windows-smoke, plugin]
+    needs: [mac-hub, mac-smoke, windows-hub, windows-smoke, plugin]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
