@@ -93,10 +93,12 @@ async function loadHello() {
 async function loadDevices() {
   devices = await (await fetch('/api/devices')).json();
   const box = $('mpcs');
-  if (!devices.length) { box.innerHTML = '<span class="empty">No MPC connected yet. Open the GPP Link plugin on an MPC.</span>'; target = null; renderFiles(); return; }
-  if (!devices.some(d => d.name === target)) target = devices[0].name;
-  box.innerHTML = devices.map(d =>
-    `<button class="mpc ${d.name===target?'on':''}" data-n="${esc(d.name)}">${esc(d.name)}<small>${d.waiting ? d.waiting+' waiting' : ago(d.lastSeen)}</small></button>`).join('');
+  // only MPCs with the GPP Link plugin open right now; one button each
+  const online = devices.filter(d => d.online);
+  if (!online.some(d => d.name === target)) target = online.length ? online[0].name : null;
+  if (!online.length) { box.innerHTML = '<span class="empty">No MPC connected right now. Open the GPP Link plugin on an MPC.</span>'; renderFiles(); return; }
+  box.innerHTML = online.map(d =>
+    `<button class="mpc ${d.name===target?'on':''}" data-n="${esc(d.name)}">${esc(d.name)}<small>${d.waiting ? d.waiting+' waiting' : ''}</small></button>`).join('');
   box.querySelectorAll('.mpc').forEach(b => b.onclick = () => {
     target = b.dataset.n; try { localStorage.setItem('mpclink.target', target); } catch (e) {}
     loadDevices(); renderFiles();
