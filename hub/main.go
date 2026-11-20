@@ -345,17 +345,40 @@ func (h *hub) upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"saved": filepath.ToSlash(saved), "size": n})
 }
 
+// An MPC with GPP Link open checks in every second or so. One that has been
+// quiet for 20 seconds is offline (plugin closed or MPC off) and the phone
+// page hides it; after half an hour it's forgotten, with anything still
+// queued for it.
+var (
+	deviceOnlineFor   = 20 * time.Second
+	deviceForgetAfter = 30 * time.Minute
+)
+
+// pruneDevices forgets MPCs gone longer than deviceForgetAfter (h.mu held).
+func (h *hub) pruneDevices(now time.Time) {
+	for n, t := range h.devices {
+		if now.Sub(t) > deviceForgetAfter {
+			delete(h.devices, n)
+			delete(h.queue, n)
+			delete(h.cue, n)
+		}
+	}
+}
+
 func (h *hub) listDevices(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	type dv struct {
 		Name     string `json:"name"`
 		LastSeen int64  `json:"lastSeen"`
+		Online   bool   `json:"online"`
 		Waiting  int    `json:"waiting"`
 	}
+	now := time.Now()
+	h.pruneDevices(now)
 	out := []dv{}
 	for n, t := range h.devices {
-		out = append(out, dv{n, t.Unix(), len(h.queue[n])})
+		out = append(out, dv{n, t.Unix(), now.Sub(t) <= deviceOnlineFor, len(h.queue[n])})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	writeJSON(w, out)
