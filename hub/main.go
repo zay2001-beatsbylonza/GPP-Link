@@ -511,10 +511,11 @@ func (h *hub) validRel(rel string) (string, error) {
 		if seg == "" || seg == "." || seg == ".." || strings.HasPrefix(seg, ".") {
 			return "", errBadPath
 		}
-		// Windows: no drive letters or alternate streams ("C:x", "a.wav:s"), no
-		// names Windows treats as devices (CON, NUL, COM1 ...), no trailing dot
-		// or space (Windows drops them, so two names could reach one file).
-		if strings.ContainsAny(seg, ":*?\"<>|") || strings.HasSuffix(seg, " ") || strings.HasSuffix(seg, ".") || windowsDevice(seg) {
+		// Windows only: no drive letters or alternate streams ("C:x", "a.wav:s"),
+		// no names Windows treats as devices (CON, NUL, COM1 ...), no trailing dot
+		// or space (Windows drops them, so two names could reach one file). On a
+		// Mac these are ordinary file names ("Why?.wav", "Beat *NEW*.wav").
+		if runtime.GOOS == "windows" && windowsUnsafe(seg) {
 			return "", errBadPath
 		}
 	}
@@ -528,6 +529,10 @@ func inside(p, root string) bool {
 		p, root = strings.ToLower(p), strings.ToLower(root)
 	}
 	return p == root || strings.HasPrefix(p, root+string(os.PathSeparator))
+}
+
+func windowsUnsafe(seg string) bool {
+	return strings.ContainsAny(seg, ":*?\"<>|") || strings.HasSuffix(seg, " ") || strings.HasSuffix(seg, ".") || windowsDevice(seg)
 }
 
 func windowsDevice(seg string) bool {
