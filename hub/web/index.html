@@ -176,7 +176,7 @@ function renderGPP() {
   else if (s.waiting) line = `${s.waiting} beat${s.waiting>1?'s':''} waiting to send.`;
   else line = 'Up to date.' + (s.lastSent ? ` Last sent: <b>${esc(s.lastSent)}</b>, ${ago(s.lastSentAt)}.` : '');
   box.innerHTML = `<p>Connected to <span class="store">${esc(s.storeName || 'your store')}</span></p>` + note +
-    `<p>${line}</p><p class="dim">${s.sentCount} beat${s.sentCount===1?'':'s'} sent as drafts. New beats in the Get Producers Paid folder send by themselves. Finish and publish them in the app.</p>` + skips +
+    `<p>${line}</p><p class="dim">${s.sentCount===1 ? '1 beat sent as a draft' : s.sentCount+' beats sent as drafts'}. New beats in the Get Producers Paid folder send by themselves. Finish and publish them in the app.</p>` + skips +
     (s.canManage ? `<div class="row"><button class="off ${gppSure?'sure':''}" id="gppoff">${gppSure ? 'Tap again to disconnect' : 'Disconnect this computer'}</button></div>` +
       (s.keptIn ? `<p class="dim" style="margin-top:10px">The connection is saved in ${esc(s.keptIn)}. It can only add drafts.</p>` : '') : '');
   const off = $('gppoff');
