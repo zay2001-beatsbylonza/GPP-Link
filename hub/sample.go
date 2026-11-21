@@ -79,6 +79,37 @@ var sampleEject = func(mount string) error {
 	return nil
 }
 
+// sampleFreeSpace reports the bytes free on the card, or -1 if unknown (tests replace it).
+var sampleFreeSpace = diskFree
+
+// sampleRoom is extra room kept per file: memory cards store files in blocks
+// (often 32 KB), so a small file takes a whole block.
+const sampleRoom = 64 << 10
+
+func humanSize(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	default:
+		return fmt.Sprintf("%d KB", max(1, n>>10))
+	}
+}
+
+// sampleFits refuses a copy the card has no room for, before anything is written.
+func sampleFits(mount, what string, bytes int64, files int) error {
+	free := sampleFreeSpace(mount)
+	if free < 0 {
+		return nil // unknown: try, and clean up if it runs out
+	}
+	need := bytes + int64(files)*sampleRoom
+	if need > free {
+		return fmt.Errorf("%s needs %s, the MPC Sample has %s free", what, humanSize(need), humanSize(free))
+	}
+	return nil
+}
+
 type sampleConfig struct {
 	Drive  string `json:"drive"`  // the drive's name, e.g. "MPC SAMPLE"
 	Folder string `json:"folder"` // where beats go on the card ("" = the top of the card)
@@ -275,6 +306,7 @@ type sampleStatus struct {
 	More       bool          `json:"more,omitempty"`  // the card has more than we listed
 	Busy       string        `json:"busy,omitempty"`  // copying right now
 	CanManage  bool          `json:"canManage"`       // pick the drive, change the folder, eject
+	Free       int64         `json:"free"`            // bytes free on the card (-1 unknown)
 }
 
 func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
@@ -293,6 +325,7 @@ func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st.Connected = true
+	st.Free = sampleFreeSpace(m)
 	if cfg.Folder == "" { // picked before the user folder existed, or an older setting
 		if u := sampleUserDir(m); u != "" {
 			s.mu.Lock()
@@ -488,6 +521,12 @@ func (h *hub) sampleSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	name := filepath.Base(src)
+	if info, err := os.Stat(src); err == nil {
+		if err := sampleFits(m, name, info.Size(), 1); err != nil {
+			httpErr(w, 507, err)
+			return
+		}
+	}
 	h.setSampleBusy(name)
 	defer h.setSampleBusy("")
 	final, err := copyNoOverwrite(src, dir, name)
@@ -694,7 +733,7 @@ func (h *hub) sampleSendFolder(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 404, errors.New("folder not found"))
 		return
 	}
-	files, _ := sampleFolderFiles(src)
+	files, total := sampleFolderFiles(src)
 	if len(files) == 0 {
 		httpErr(w, 404, errors.New("no samples or beats in that folder"))
 		return
@@ -711,13 +750,21 @@ func (h *hub) sampleSendFolder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if err := sampleFits(m, filepath.Base(src), total, len(files)); err != nil {
+		httpErr(w, 507, err)
+		return
+	}
+	// dest is a new folder (an existing one is never reused), so if the copy
+	// can't finish, removing it takes away only what this copy wrote
 	dest := freeDirName(filepath.Join(dir, filepath.Base(src)))
 	name := filepath.Base(dest)
 	defer h.setSampleBusy("")
 	for i, rel := range files {
 		h.setSampleBusy(fmt.Sprintf("%s (%d of %d)", name, i+1, len(files)))
 		if _, err := copyNoOverwrite(filepath.Join(src, rel), filepath.Join(dest, filepath.Dir(rel)), filepath.Base(rel)); err != nil {
-			httpErr(w, 500, fmt.Errorf("copied %d of %d files, then: %v", i, len(files), err))
+			os.RemoveAll(dest)
+			log.Printf("MPC Sample: folder %s stopped after %d of %d files (%v); removed the partial copy", req.Path, i, len(files), err)
+			httpErr(w, 500, fmt.Errorf("couldn't finish copying %s (%v), so the partial folder was removed from the card", filepath.Base(src), err))
 			return
 		}
 	}

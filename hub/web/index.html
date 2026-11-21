@@ -107,7 +107,7 @@ try { target = localStorage.getItem('mpclink.target'); } catch (e) {}
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
-function size(n) { return n > 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(n/1024))+' KB'; }
+function size(n) { return n > 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n > 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(n/1024))+' KB'; }
 function ago(t) { const s = Date.now()/1000 - t; return s < 60 ? 'now' : s < 3600 ? Math.round(s/60)+' min ago' : Math.round(s/3600)+' h ago'; }
 
 async function loadHello() {
@@ -272,11 +272,11 @@ function renderSample() {
           <button class="tofolder" data-i="${i}">Send to Folder</button>
           <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
     : `<p class="dim">No beats on the card yet.</p>`;
-  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})</span></p>` + busy +
+  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy +
     `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
     `<p style="margin-top:4px"><b>Send a folder</b> <span class="dim">(sample packs, kits, stems from your Beats folder)</span></p>` +
     (smpFolders.length
-      ? `<div class="row"><select id="smpdir">${smpFolders.map(f => `<option value="${esc(f.path)}" ${f.path===smpPick?'selected':''}>${esc(f.path)} (${f.files} file${f.files>1?'s':''}, ${size(f.bytes)})</option>`).join('')}</select><button class="sendfolder" id="smpsenddir" ${s.busy?'disabled':''}>Send Folder to MPC Sample</button></div>`
+      ? `<div class="row"><select id="smpdir">${smpFolders.map(f => `<option value="${esc(f.path)}" ${f.path===smpPick?'selected':''}>${esc(f.path)} (${f.files} file${f.files>1?'s':''}, ${size(f.bytes)}${s.free >= 0 && f.bytes > s.free ? ', too big' : ''})</option>`).join('')}</select><button class="sendfolder" id="smpsenddir" ${s.busy?'disabled':''}>Send Folder to MPC Sample</button></div>`
       : `<p class="dim">No folders with samples in your Beats folder yet.</p>`) +
     `<p class="dim">On the card:</p>` + files +
     (s.canManage ? `<div class="row"><button class="eject" id="smpeject">Eject MPC Sample</button><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');

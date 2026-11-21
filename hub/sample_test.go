@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -34,9 +35,10 @@ func sampleSetup(t *testing.T) (*hub, *httptest.Server, string, string) {
 	os.WriteFile(filepath.Join(card, "user", "export", "user/export/._Chop 1.wav"), []byte("mac junk"), 0o644)
 	os.Symlink("/", filepath.Join(vols, "Macintosh HD")) // the Mac's own disk
 
-	oldRoots, oldEject := sampleVolumeRoots, sampleEject
+	oldRoots, oldEject, oldFree := sampleVolumeRoots, sampleEject, sampleFreeSpace
 	sampleVolumeRoots = func() []string { return []string{vols} }
-	t.Cleanup(func() { sampleVolumeRoots, sampleEject = oldRoots, oldEject })
+	sampleFreeSpace = func(string) int64 { return 8 << 30 }
+	t.Cleanup(func() { sampleVolumeRoots, sampleEject, sampleFreeSpace = oldRoots, oldEject, oldFree })
 
 	root, _ := filepath.EvalSymlinks(beats)
 	h := &hub{root: root, name: "test", port: 47800, devices: map[string]time.Time{}, queue: map[string][]string{},
@@ -237,6 +239,37 @@ func TestMPCSampleGPP(t *testing.T) {
 		if code, _ := samplePost(t, srv, "/api/sample/sendfolder", map[string]string{"path": p}, true); code == 200 {
 			t.Fatalf("sent folder %q", p)
 		}
+	}
+
+	// too big for the card: nothing is written
+	sampleFreeSpace = func(string) int64 { return 100 << 10 } // 100 KB, less than 2 files' room
+	code, body := samplePost(t, srv, "/api/sample/sendfolder", map[string]string{"path": "Packs/Soul Chops"}, true)
+	if code != 507 || !strings.Contains(body, "free") {
+		t.Fatalf("too-big folder: %d %s", code, body)
+	}
+	if _, err := os.Stat(filepath.Join(card, "user", "Soul Chops (3)")); err == nil {
+		t.Fatal("partial folder written")
+	}
+	sampleFreeSpace = func(string) int64 { return 1 } // 1 byte
+	if code, _ := samplePost(t, srv, "/api/sample/send", map[string]string{"path": "Trap Beat_140bpm.mp3"}, true); code != 507 {
+		t.Fatalf("too-big beat: %d", code)
+	}
+	// space unknown, and the copy fails partway: the partial folder is removed
+	sampleFreeSpace = func(string) int64 { return -1 }
+	os.Chmod(filepath.Join(pack, "Drums", "Kick.wav"), 0o000) // can't be read
+	if os.Getuid() != 0 && runtime.GOOS != "windows" {
+		code, body = samplePost(t, srv, "/api/sample/sendfolder", map[string]string{"path": "Packs/Soul Chops"}, true)
+		if code != 500 || !strings.Contains(body, "removed") {
+			t.Fatalf("failed folder: %d %s", code, body)
+		}
+		if _, err := os.Stat(filepath.Join(card, "user", "Soul Chops (3)")); err == nil {
+			t.Fatal("partial folder left on the card")
+		}
+	}
+	os.Chmod(filepath.Join(pack, "Drums", "Kick.wav"), 0o644)
+	sampleFreeSpace = func(string) int64 { return 8 << 30 }
+	if s := sampleGet(t, srv); s.Free != 8<<30 {
+		t.Fatalf("free space: %d", s.Free)
 	}
 
 	// eject
