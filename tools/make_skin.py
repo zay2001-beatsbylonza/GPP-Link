@@ -455,6 +455,19 @@ def main():
             if os.path.exists(p):
                 os.remove(p)
         json.dump(tui, open(tui_path, "w"), indent=1)
+
+        # Q-Links only scroll the lists. Buttons and the cassette are tapped: a knob turned
+        # by accident must never send a file or start the tape.
+        ql_path = os.path.join(gen, "Q-Links.json")
+        ql = json.load(open(ql_path))
+        lists = {index[n] for n in PICKERS}
+        for m in ql["Screen Mode Q-Links"]["map"]:
+            for k, v in m["Q-Links"].items():
+                if v not in lists:
+                    m["Q-Links"][k] = -1
+        program = ["Computer Files", "From MPC", "Computer Stems", "Received"]   # track / program Q-Link mode
+        ql["Program Mode Q-Links"] = {"Q-Link %d" % (i + 1): (index[program[i]] if i < len(program) else -1) for i in range(16)}
+        json.dump(ql, open(ql_path, "w"), indent=4)
         if os.path.isdir(out):
             shutil.rmtree(out)
         shutil.copytree(gen, out)
