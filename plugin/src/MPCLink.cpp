@@ -3,10 +3,10 @@
 //
 // The screen:
 //   A cassette deck on top: PLAY plays the beat picked in "Computer Files" through
-//   this track (a preview, nothing is saved), the reels turn, and the beat's
-//   blue waveform scrolls right to left past a red playhead, like tape moving:
-//   bright blue behind the playhead (played), darker blue ahead. Pressing the
-//   same button again stops and rewinds to the front; the end rewinds too.
+//   this track (a preview, nothing is saved), the reels turn, and 32 bars on the
+//   label bounce to the sound like a stereo's visualizer: bass on the left, highs
+//   on the right, mirrored around the centre line, the loudest tips in red.
+//   Pressing the same button again stops and rewinds to the front; the end rewinds too.
 //   Four blocks under it, each a picker (turn a Q-Link) over a big button:
 //   SEND TO MPC        pick a beat on the computer ("Computer Files"); it lands in
 //                      "<drive>/From Computer/" on this MPC.
@@ -18,6 +18,10 @@
 //   SEND STEMS TO GET PRODUCERS PAID  pick a stems folder in the Beats folder
 //                      ("Computer Stems"); the computer copies it to
 //                      "Beats/Get Producers Paid/Stems/".
+// A second tab, RECEIVED, has the same cassette and a "Received" picker: the files
+// in "<drive>/From Computer/" (what this MPC got), newest first. The cassette plays
+// whichever picker was turned last, Computer Files or Received; a received file is
+// sent to the computer to be turned into the cassette's audio (nothing is kept there).
 // Nothing leaves the MPC unless a button is pressed. Files sent from the phone
 // page arrive in "From Computer" by themselves, a beat cued on the phone page
 // becomes the "Computer Files" pick, and the lists refresh on their own.
@@ -73,13 +77,20 @@ enum ParamIndex
     kPlay,       // cassette PLAY / STOP
     kReel,       // cassette reels: animation frame (screen only)
     kWave0,      // first of kWaveBars waveform bars (screen only)
-    kNumParams = kWave0 + 32
+    kRecv = kWave0 + 32, // index into "From Computer" (what this MPC received), for the cassette
+    kMacPos,     // readouts: "3 / 48", where each picker is in its list (screen only)
+    kMpcPos,
+    kStemsPos,
+    kRecvPos,
+    kRecvCount,  // readout: how many files this MPC has received (screen only)
+    kRecvToFolder, // button (RECEIVED tab): SEND TO FOLDER with the Received pick
+    kRecvToGpp,    // button (RECEIVED tab): SEND TO GPP with the Received pick
+    kNumParams
 };
 
 constexpr int kWaveBars   = 32;
-constexpr int kPlayhead   = 16;      // bars left of this one have played
-constexpr int kSliceFrames = 11025;  // each bar is a quarter second of the beat
-constexpr int kWaveLevels = 17;   // bar heights 0..16; +17 = the "played" colour
+constexpr int kWaveLevels = 17;   // bar heights 0..16; +17 = the same height with a red (loud) tip
+constexpr int kFftSize    = 1024; // the visualizer looks at ~23 ms of sound around the play position
 constexpr int kReelFrames = 12;
 constexpr size_t kMaxPreviewBytes = 128u << 20;   // ~12 minutes of 44.1 kHz stereo
 
@@ -221,6 +232,17 @@ public:
             w.automatable = false;
             addParam(w);
         }
+        addParam(mpc::intParam ("recv",     "Received",       0, kMaxFiles, 0));
+        const char* const readouts[][2] = { { "macpos", "Files Pos" }, { "mpcpos", "MPC Pos" }, { "stemspos", "Stems Pos" },
+                                            { "recvpos", "Received Pos" }, { "recvcount", "Received Count" } };
+        for (const auto& r : readouts)
+        {
+            mpc::Param q = mpc::intParam(r[0], r[1], 0, 1000, 0);
+            q.automatable = false;
+            addParam(q);
+        }
+        addParam(mpc::boolParam("recvtofolder", "Received to Folder", false));
+        addParam(mpc::boolParam("recvtogpp",    "Received to GPP",    false));
 
         status_ = "Starting...";
         // The worker starts in prepare(): by then the host has connected to us,
@@ -288,6 +310,9 @@ public:
             if (!press(playReq_, playAt_)) playSync_ = true;
             return;
         }
+        if (index == kMacBeat) { tapeSrc_.store(0); posDirty_ = true; return; }   // the cassette follows the last picker turned
+        if (index == kRecv)    { tapeSrc_.store(1); posDirty_ = true; return; }
+        if (index == kMpcBeat || index == kStems) { posDirty_ = true; return; }
         if (v < 0.5f) return;
         switch (index)
         {
@@ -295,6 +320,8 @@ public:
             case kToFolder: press(toFolderReq_, toFolderAt_); break;
             case kToGpp:    press(toGppReq_, toGppAt_); break;
             case kToStems:  press(toStemsReq_, toStemsAt_); break;
+            case kRecvToFolder: press(recvFolderReq_, recvFolderAt_); break;
+            case kRecvToGpp:    press(recvGppReq_, recvGppAt_); break;
             default: break;
         }
     }
@@ -309,6 +336,15 @@ public:
             case kMacBeat:
                 if (macFiles_.empty()) out = connected_ ? "(Beats folder empty)" : "(not connected)";
                 else out = fitText(baseName(macFiles_[(size_t)std::min(i, (int)macFiles_.size() - 1)]));
+                return true;
+            case kMacPos:   out = posText(kMacBeat, macFiles_.size()); return true;
+            case kMpcPos:   out = posText(kMpcBeat, mpcFiles_.size()); return true;
+            case kStemsPos: out = posText(kStems, stems_.size()); return true;
+            case kRecvPos:  out = posText(kRecv, recvFiles_.size()); return true;
+            case kRecvCount: out = std::to_string(recvFiles_.size()); return true;
+            case kRecv:
+                if (recvFiles_.empty()) out = "(nothing received yet)";
+                else out = fitText(baseName(recvFiles_[(size_t)std::min(i, (int)recvFiles_.size() - 1)]));
                 return true;
             case kMpcBeat:
                 if (mpcFiles_.empty()) out = "(To Computer is empty)";
@@ -328,6 +364,19 @@ public:
     }
 
 private:
+    // "3 / 48": the picker's place in its list (textMu_ held)
+    std::string posText(int picker, size_t n)
+    {
+        if (n == 0) return "0 / 0";
+        const int i = std::min(getInt(picker), (int)n - 1);
+        return std::to_string(i + 1) + " / " + std::to_string(n);
+    }
+
+    void bumpCounters()
+    {
+        for (int p : { kMacPos, kMpcPos, kStemsPos, kRecvPos, kRecvCount }) bump(p);
+    }
+
     static mpc::PluginInfo makeInfo()
     {
         mpc::PluginInfo info;
@@ -379,7 +428,7 @@ private:
         rescanLocal();
 
         Clock::time_point lastTry{}, lastList{}, lastInbox{}, lastCue{}, lastLocal = Clock::now();
-        while (!sleepFor(150))
+        while (!sleepFor(playing_ ? 60 : 150))   // the visualizer moves ~16 times a second while playing
         {
             const Clock::time_point now = Clock::now();
 
@@ -396,8 +445,12 @@ private:
             if (toFolderReq_.exchange(false)) { doSend(kMpcBeat, false); release(kToFolder); }
             if (toGppReq_.exchange(false))    { doSend(kMpcBeat, true);  release(kToGpp); }
             if (toStemsReq_.exchange(false))  { doSendStems();       release(kToStems); }
+            if (recvFolderReq_.exchange(false)) { doSendRecv(false); release(kRecvToFolder); }
+            if (recvGppReq_.exchange(false))    { doSendRecv(true);  release(kRecvToGpp); }
             if (playReq_.exchange(false))     togglePlay();
             tickTape();
+            showSource();
+            if (posDirty_.exchange(false)) bumpCounters();
 
             if (now - lastCue > std::chrono::seconds(1))     // a beat cued on the phone page
             {
@@ -408,7 +461,7 @@ private:
             {
                 lastInbox = now;
                 const int n = mpclink_poll_inbox(&ctx_, inboxDir_.c_str());
-                if (n > 0) setActivity("Got " + std::to_string(n) + " from phone");
+                if (n > 0) { setActivity("Got " + std::to_string(n) + " from phone"); rescanLocal(); }
                 else if (n < 0) lost(n);
             }
             if (connected_ && now - lastList > std::chrono::seconds(10)) { refreshMacList(); refreshStems(); lastList = now; }
@@ -471,6 +524,7 @@ private:
         if (idx < 0) { refreshMacList(); idx = findMacFile(path); }   // a brand-new beat
         if (idx < 0) { setActivity("Cued beat not found"); return; }
         if (playing_) stopTape("Stopped");
+        tapeSrc_.store(0);
         setSelf(kMacBeat, (float)idx);
         setActivity("Cued from phone: " + baseName(path));
     }
@@ -500,7 +554,7 @@ private:
                                [](const StemsFolder& a, const StemsFolder& b) { return a.path == b.path && a.files == b.files; });
             stems_.swap(found);
         }
-        if (changed) requestDisplayUpdate();
+        if (changed) { requestDisplayUpdate(); posDirty_ = true; }
     }
 
     void doSendStems()
@@ -520,32 +574,65 @@ private:
 
     // ---------------- cassette ----------------
 
+    // The cassette's pick: the last picker turned (Computer Files or Received).
+    // key names the tape ("mac:<path>" or "recv:<path>"); empty if that list is empty.
+    void tapePick(int& src, int& index, std::string& key, std::string& path)
+    {
+        src = tapeSrc_.load();
+        index = getInt(src ? kRecv : kMacBeat);
+        std::lock_guard<std::mutex> lk(textMu_);
+        const std::vector<std::string>& list = src ? recvFiles_ : macFiles_;
+        if (list.empty()) { key.clear(); path.clear(); return; }
+        const std::string& rel = list[(size_t)std::min(index, (int)list.size() - 1)];
+        key = (src ? "recv:" : "mac:") + rel;
+        path = src ? inboxDir_ + "/" + rel : rel;
+    }
+
     void togglePlay()
     {
         if (playing_) { stopTape("Stopped"); return; }
-        std::string path;
+        int src, index;
+        std::string key, path;
+        tapePick(src, index, key, path);
+        if (key.empty())
         {
-            std::lock_guard<std::mutex> lk(textMu_);
-            if (!macFiles_.empty()) path = macFiles_[(size_t)std::min(getInt(kMacBeat), (int)macFiles_.size() - 1)];
+            setSelf(kPlay, 0.0f);
+            setActivity(src ? "Nothing received yet" : connected_ ? "Pick a computer file first" : "Not connected yet");
+            return;
         }
-        if (path.empty()) { setSelf(kPlay, 0.0f); setActivity(connected_ ? "Pick a computer file first" : "Not connected yet"); return; }
-        if (path != tapePath_)
+        if (key != tapePath_)
         {
+            if (!connected_) { setSelf(kPlay, 0.0f); setActivity("Not connected yet"); return; }
             setActivity("Loading " + baseName(path) + "...");
-            if (!loadTape(path)) { setSelf(kPlay, 0.0f); return; }
+            if (!loadTape(path, src == 1)) { setSelf(kPlay, 0.0f); return; }
+            tapePath_ = key;
+            tapeName_ = baseName(path);
         }
-        tapeIndex_ = getInt(kMacBeat);
+        tapeIndex_ = index;
+        tapeSrcPlaying_ = src;
         playing_ = true;
         setSelf(kPlay, 1.0f);
         lastShownSec_ = -1;
     }
 
+    // Say which list the cassette plays when it changes (worker thread).
+    void showSource()
+    {
+        const int src = tapeSrc_.load();
+        if (src == shownSrc_) return;
+        shownSrc_ = src;
+        if (playing_) return;   // tickTape stops the tape and says so
+        setActivity(src ? "Cassette: Received" : "Cassette: Computer Files");
+    }
+
     // Fetch the beat as 16-bit stereo 44.1 kHz WAV (the Mac converts it) and swap it in.
-    bool loadTape(const std::string& path)
+    // local: a file on this MPC (Received), sent to the computer to be converted.
+    bool loadTape(const std::string& path, bool local)
     {
         unsigned char* buf = nullptr;
         size_t len = 0;
-        const int r = mpclink_fetch_preview(&ctx_, path.c_str(), &buf, &len, kMaxPreviewBytes);
+        const int r = local ? mpclink_preview_file(&ctx_, path.c_str(), &buf, &len, kMaxPreviewBytes)
+                            : mpclink_fetch_preview(&ctx_, path.c_str(), &buf, &len, kMaxPreviewBytes);
         if (r != MPCLINK_OK)
         {
             setActivity(r == MPCLINK_ERR_HTTP ? "Can't play this file" : mpclink_strerror(r));
@@ -565,23 +652,10 @@ private:
             t->pcm[i] = (int16_t)(buf[44 + 2 * i] | (buf[45 + 2 * i] << 8));
         std::free(buf);
 
-        // waveform: the loudest sample in each quarter second, scaled to the loudest one
-        std::vector<int> peaks((t->frames + kSliceFrames - 1) / kSliceFrames, 0);
-        int loudest = 1;
-        for (size_t f = 0; f < t->frames; ++f)
-        {
-            int& pk = peaks[f / kSliceFrames];
-            pk = std::max({ pk, std::abs((int)t->pcm[2 * f]), std::abs((int)t->pcm[2 * f + 1]) });
-        }
-        for (int pk : peaks) loudest = std::max(loudest, pk);
-        slices_.assign(peaks.size(), 0);
-        for (size_t i = 0; i < peaks.size(); ++i)
-            slices_[i] = (uint8_t)(peaks[i] ? std::max(1, (int)std::lround(16.0 * peaks[i] / loudest)) : 0);
-
         swapTape(t);
-        tapePath_ = path;
+        tapePath_.clear();   // the caller names the new tape
         tapeFrames_ = t->frames;
-        drawWave(0);
+        drawIdle();
         return true;
     }
 
@@ -612,7 +686,7 @@ private:
     void rewind()
     {
         pos_.store(0);
-        drawWave(0);
+        drawIdle();
     }
 
     // While playing: turn the reels, light the bars, show the time. Runs every worker tick.
@@ -631,10 +705,11 @@ private:
             }
             return;
         }
-        if (getInt(kMacBeat) != tapeIndex_) { stopTape("Stopped"); return; }   // a new beat was picked
+        if (tapeSrc_.load() != tapeSrcPlaying_ || getInt(tapeSrcPlaying_ ? kRecv : kMacBeat) != tapeIndex_)
+        { stopTape("Stopped"); return; }   // a new beat (or the other list) was picked
         setSelf(kReel, (float)((getInt(kReel) + 1) % kReelFrames));
         const double frame = (double)(pos_.load() >> 16);
-        drawWave((int)(frame / kSliceFrames));
+        drawLive((size_t)frame);
         const int sec = (int)(frame / 44100.0);
         if (sec != lastShownSec_)
         {
@@ -643,21 +718,86 @@ private:
             char t[32];
             std::snprintf(t, sizeof t, " %d:%02d / %d:%02d", sec / 60, sec % 60, total / 60, total % 60);
             const std::string tail = t;
-            setActivity(fitText(baseName(tapePath_), 30 - tail.size()) + tail);
+            setActivity(fitText(tapeName_, 30 - tail.size()) + tail);
         }
     }
 
-    // The waveform window: slice `at` sits under the playhead, earlier slices to its
-    // left (bright while playing), later ones to its right (dim). Only changed bars
-    // are sent to the screen.
-    void drawWave(int at)
+    // The visualizer, resting: a flat line.
+    void drawIdle()
     {
+        std::fill(level_, level_ + kWaveBars, 0.0f);
+        for (int b = 0; b < kWaveBars; ++b)
+            if (getInt(kWave0 + b) != 1) setSelf(kWave0 + b, 1.0f);
+    }
+
+    // The visualizer, playing: the sound around `frame` split into 32 bands (bass
+    // left, highs right), each bar jumping up with its band and falling back
+    // smoothly. Only changed bars are sent to the screen.
+    void drawLive(size_t frame)
+    {
+        const Tape* t = active_.load(std::memory_order_acquire);   // the worker owns tape swaps: safe to read
+        if (!t || t->frames < (size_t)kFftSize) return;
+        if (frame + kFftSize > t->frames) frame = t->frames - kFftSize;
+        float* re = fftRe_;   // per instance: two GPP Links on two tracks each have a worker
+        float* im = fftIm_;
+        for (int i = 0; i < kFftSize; ++i)
+        {
+            const float w = 0.5f - 0.5f * std::cos(6.2831853f * i / (kFftSize - 1));   // Hann window
+            re[i] = w * (t->pcm[2 * (frame + i)] + t->pcm[2 * (frame + i) + 1]) * (0.5f / 32768.0f);
+            im[i] = 0.0f;
+        }
+        fft(re, im);
+        // 32 bands spaced evenly in pitch from ~40 Hz to ~16 kHz (bin width 43 Hz)
         for (int b = 0; b < kWaveBars; ++b)
         {
-            const int slice = at + b - kPlayhead;
-            const int h = (slice >= 0 && slice < (int)slices_.size()) ? slices_[(size_t)slice] : 0;
-            const int v = h + (playing_ && b < kPlayhead ? kWaveLevels : 0);
+            const double f0 = 40.0 * std::pow(400.0, (double)b / kWaveBars);
+            const double f1 = 40.0 * std::pow(400.0, (double)(b + 1) / kWaveBars);
+            int k0 = std::max(1, (int)(f0 / (44100.0 / kFftSize)));
+            int k1 = std::max(k0 + 1, (int)(f1 / (44100.0 / kFftSize)) + 1);
+            k1 = std::min(k1, kFftSize / 2);
+            float e = 0.0f;
+            for (int k = k0; k < k1; ++k) e = std::max(e, re[k] * re[k] + im[k] * im[k]);
+            // dB above a -60 dB floor, highs lifted a little so they show (music is bass-heavy)
+            const float db = 10.0f * std::log10(e + 1e-12f) + 6.0f * (float)b / kWaveBars;
+            const float target = mpc::clamp((db + 18.0f) / 40.0f, 0.0f, 1.0f) * 16.0f;
+            level_[b] = target > level_[b] ? target : std::max(target, level_[b] - 2.2f);   // jump up, fall back
+        }
+        for (int b = 0; b < kWaveBars; ++b)
+        {
+            const int h = std::max(1, (int)std::lround(level_[b]));
+            const int v = h + (h >= 14 ? kWaveLevels : 0);   // red tip when it's loud
             if (getInt(kWave0 + b) != v) setSelf(kWave0 + b, (float)v);
+        }
+    }
+
+    // In-place radix-2 FFT of kFftSize points.
+    static void fft(float* re, float* im)
+    {
+        const int n = kFftSize;
+        for (int i = 1, j = 0; i < n; ++i)
+        {
+            int bit = n >> 1;
+            for (; j & bit; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j) { std::swap(re[i], re[j]); std::swap(im[i], im[j]); }
+        }
+        for (int len = 2; len <= n; len <<= 1)
+        {
+            const float ang = -6.2831853f / len;
+            const float wr = std::cos(ang), wi = std::sin(ang);
+            for (int i = 0; i < n; i += len)
+            {
+                float cr = 1.0f, ci = 0.0f;
+                for (int k = 0; k < len / 2; ++k)
+                {
+                    const int a = i + k, b = a + len / 2;
+                    const float tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+                    re[b] = re[a] - tr; im[b] = im[a] - ti;
+                    re[a] += tr; im[a] += ti;
+                    const float nr = cr * wr - ci * wi;
+                    ci = cr * wi + ci * wr; cr = nr;
+                }
+            }
         }
     }
 
@@ -671,27 +811,62 @@ private:
         }, &files);
         if (r != MPCLINK_OK) { lost(r); return; }
         bool changed;
+        int keep;
         {
             std::lock_guard<std::mutex> lk(textMu_);
             changed = files != macFiles_;
+            keep = newIndexOf(kMacBeat, macFiles_, files);
             macFiles_.swap(files);
         }
-        if (changed) requestDisplayUpdate();
+        if (keep >= 0)
+        {
+            setSelf(kMacBeat, (float)keep);
+            if (tapeSrcPlaying_ == 0 && tapeIndex_ >= 0) tapeIndex_ = keep;   // the same beat keeps playing
+        }
+        if (changed) { requestDisplayUpdate(); posDirty_ = true; }
     }
 
     void rescanLocal()
     {
-        std::vector<LocalFile> found;
-        scanLocal(outboxDir_, "", found);
-        std::vector<std::string> files;
-        for (const LocalFile& f : found) { if ((int)files.size() > kMaxFiles) break; files.push_back(f.rel); }
+        std::vector<std::string> files = localList(outboxDir_), recv = localList(inboxDir_);
+        int keepMpc, keepRecv;
         bool changed;
         {
             std::lock_guard<std::mutex> lk(textMu_);
-            changed = files != mpcFiles_;
+            changed = files != mpcFiles_ || recv != recvFiles_;
+            keepMpc = newIndexOf(kMpcBeat, mpcFiles_, files);
+            keepRecv = newIndexOf(kRecv, recvFiles_, recv);
             mpcFiles_.swap(files);
+            recvFiles_.swap(recv);
         }
-        if (changed) requestDisplayUpdate();
+        if (keepMpc >= 0) setSelf(kMpcBeat, (float)keepMpc);
+        if (keepRecv >= 0)
+        {
+            setSelf(kRecv, (float)keepRecv);
+            if (tapeSrcPlaying_ == 1 && tapeIndex_ >= 0) tapeIndex_ = keepRecv;   // the same beat keeps playing
+        }
+        if (changed) { requestDisplayUpdate(); posDirty_ = true; }
+    }
+
+    // When a list changes (a new file arrives, newest first), keep the same file
+    // picked: its index in the new list, or -1 if nothing needs to move (textMu_ held).
+    int newIndexOf(int picker, const std::vector<std::string>& before, const std::vector<std::string>& after)
+    {
+        if (before.empty() || before == after) return -1;
+        const int i = std::min(getInt(picker), (int)before.size() - 1);
+        const auto it = std::find(after.begin(), after.end(), before[(size_t)i]);
+        if (it == after.end()) return -1;
+        const int j = (int)(it - after.begin());
+        return j == getInt(picker) ? -1 : j;
+    }
+
+    static std::vector<std::string> localList(const std::string& dir)
+    {
+        std::vector<LocalFile> found;
+        scanLocal(dir, "", found);
+        std::vector<std::string> files;
+        for (const LocalFile& f : found) { if ((int)files.size() > kMaxFiles) break; files.push_back(f.rel); }
+        return files;
     }
 
     void doGet()
@@ -706,7 +881,7 @@ private:
         setActivity("Getting " + baseName(path) + "...");
         char saved[1100] = {0};
         const int r = mpclink_download(&ctx_, path.c_str(), inboxDir_.c_str(), saved, sizeof saved);
-        if (r == MPCLINK_OK) setActivity("Got " + baseName(saved));
+        if (r == MPCLINK_OK) { setActivity("Got " + baseName(saved)); rescanLocal(); }
         else { setActivity(std::string(mpclink_strerror(r))); lost(r); }
     }
 
@@ -728,16 +903,40 @@ private:
         else { setActivity(std::string(mpclink_strerror(r))); lost(r); }
     }
 
+    // RECEIVED tab: send the Received pick (a file in From Computer) to the Mac's
+    // From MPC folder, or to Get Producers Paid. The file stays on the MPC.
+    void doSendRecv(bool toGpp)
+    {
+        std::string rel;
+        {
+            std::lock_guard<std::mutex> lk(textMu_);
+            if (!recvFiles_.empty())
+                rel = recvFiles_[(size_t)std::min(getInt(kRecv), (int)recvFiles_.size() - 1)];
+        }
+        if (rel.empty()) { setActivity("Nothing received yet"); return; }
+        setActivity("Sending " + baseName(rel) + "...");
+        const std::string local = inboxDir_ + "/" + rel;
+        const int r = mpclink_upload_to(&ctx_, local.c_str(), rel.c_str(), toGpp ? "gpp" : nullptr);
+        if (r == MPCLINK_OK) setActivity(toGpp ? "Sent to GPP: " + baseName(rel) : "Sent " + baseName(rel));
+        else { setActivity(std::string(mpclink_strerror(r))); lost(r); }
+    }
+
     // Buttons pressed while not connected are dropped with a message.
     void dropRequests()
     {
         const bool any = toMpcReq_.exchange(false) | toFolderReq_.exchange(false) | toGppReq_.exchange(false)
-                       | toStemsReq_.exchange(false);
-        if (any) { release(kToMpc); release(kToFolder); release(kToGpp); release(kToStems); setActivity("Not connected yet"); }
+                       | toStemsReq_.exchange(false) | recvFolderReq_.exchange(false) | recvGppReq_.exchange(false);
+        if (any)
+        {
+            for (int b : { kToMpc, kToFolder, kToGpp, kToStems, kRecvToFolder, kRecvToGpp }) release(b);
+            setActivity("Not connected yet");
+        }
+        if (posDirty_.exchange(false)) bumpCounters();
         if (playReq_.exchange(false))
         {
             if (playing_) stopTape("Stopped");   // a tape already loaded can play without the Mac
-            else if (active_.load() && tapeIndex_ == getInt(kMacBeat)) togglePlay();
+            else if (active_.load() && tapeSrc_.load() == tapeSrcPlaying_
+                     && tapeIndex_ == getInt(tapeSrcPlaying_ ? kRecv : kMacBeat)) togglePlay();
             else { setSelf(kPlay, 0.0f); setActivity("Not connected yet"); }
         }
         tickTape();
@@ -781,19 +980,23 @@ private:
     std::condition_variable wake_;
     std::atomic<bool> stop_{false};
 
-    std::atomic<bool> toMpcReq_{false}, toFolderReq_{false}, toGppReq_{false}, toStemsReq_{false}, playReq_{false};
-    std::atomic<long long> toMpcAt_{0}, toFolderAt_{0}, toGppAt_{0}, toStemsAt_{0}, playAt_{0};
-    std::atomic<bool> selfSet_{false}, playSync_{false};
+    std::atomic<bool> toMpcReq_{false}, toFolderReq_{false}, toGppReq_{false}, toStemsReq_{false}, playReq_{false},
+                      recvFolderReq_{false}, recvGppReq_{false};
+    std::atomic<long long> toMpcAt_{0}, toFolderAt_{0}, toGppAt_{0}, toStemsAt_{0}, playAt_{0}, recvFolderAt_{0}, recvGppAt_{0};
+    std::atomic<bool> selfSet_{false}, playSync_{false}, posDirty_{true};
 
     // cassette: the audio thread reads active_/pos_/playing_; everything else is the worker's
     std::atomic<Tape*> active_{nullptr};
     std::atomic<uint64_t> pos_{0}, step_{65536}, blocks_{0};
     std::atomic<bool> playing_{false};
     bool shownPlaying_ = false;
-    std::string tapePath_;
+    std::string tapePath_, tapeName_;   // the loaded tape ("mac:<path>" / "recv:<path>") and its file name
     size_t tapeFrames_ = 0;
     int tapeIndex_ = -1, lastShownSec_ = -1;
-    std::vector<uint8_t> slices_;   // waveform heights 0..16, one per quarter second
+    std::atomic<int> tapeSrc_{0};        // the cassette's list: 0 = Computer Files, 1 = Received (last turned)
+    int tapeSrcPlaying_ = 0, shownSrc_ = 0;
+    float level_[kWaveBars] = {};   // the visualizer bars' current heights (0..16)
+    float fftRe_[kFftSize] = {}, fftIm_[kFftSize] = {};
 
     mpclink_ctx ctx_{};
     std::atomic<bool> connected_{false};
@@ -801,7 +1004,7 @@ private:
 
     std::mutex textMu_;   // guards everything below (read by formatValue on the UI thread)
     std::string status_;
-    std::vector<std::string> macFiles_, mpcFiles_;
+    std::vector<std::string> macFiles_, mpcFiles_, recvFiles_;
     struct StemsFolder { std::string path; int files; };
     std::vector<StemsFolder> stems_;
 };

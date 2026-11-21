@@ -1,23 +1,92 @@
 {
-  "kit": { "theme": "amber", "accent": "ffffd400" },
+  "kit": {
+    "theme": "amber",
+    "accent": "ffffd400"
+  },
   "pages": [
     {
       "name": "LINK",
       "controls": [
-        "empty", "empty", "empty", "empty",
-        "empty", "empty", "empty", "empty",
-
-        { "param": "Computer Files", "widget": "slider" },
-        { "param": "From MPC",       "widget": "slider" },
         "empty",
-        { "param": "Computer Stems", "widget": "slider" },
-
-        { "param": "Send to MPC",    "widget": "switch" },
-        { "param": "Send to Folder", "widget": "switch" },
-        { "param": "Send to GPP",    "widget": "switch" },
-        { "param": "Send Stems",     "widget": "switch" }
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        {
+          "param": "Computer Files",
+          "widget": "slider"
+        },
+        {
+          "param": "From MPC",
+          "widget": "slider"
+        },
+        "empty",
+        {
+          "param": "Computer Stems",
+          "widget": "slider"
+        },
+        {
+          "param": "Send to MPC",
+          "widget": "switch"
+        },
+        {
+          "param": "Send to Folder",
+          "widget": "switch"
+        },
+        {
+          "param": "Send to GPP",
+          "widget": "switch"
+        },
+        {
+          "param": "Send Stems",
+          "widget": "switch"
+        }
+      ]
+    },
+    {
+      "name": "RECEIVED",
+      "controls": [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        {
+          "param": "Received",
+          "widget": "slider"
+        },
+        "empty",
+        "empty",
+        "empty",
+        {
+          "param": "Send to MPC",
+          "widget": "switch"
+        },
+        {
+          "param": "Received to Folder",
+          "widget": "switch"
+        },
+        {
+          "param": "Received to GPP",
+          "widget": "switch"
+        },
+        {
+          "param": "Send Stems",
+          "widget": "switch"
+        }
       ]
     }
   ],
-  "style": { "background": "ff000000", "accent": "ffe53935", "text": "ffffd400", "muted": "ffe53935" }
+  "style": {
+    "background": "ff000000",
+    "accent": "ffe53935",
+    "text": "ffffd400",
+    "muted": "ffe53935"
+  }
 }

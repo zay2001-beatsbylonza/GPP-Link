@@ -433,6 +433,29 @@ int mpclink_download(mpclink_ctx *ctx, const char *path, const char *dest_dir,
     return MPCLINK_OK;
 }
 
+/* read a WAV preview body of exactly clen bytes into a malloc'd buffer (closes c) */
+static int read_preview(conn_t *c, mpclink_ctx *ctx, int status, long long clen,
+                        unsigned char **out, size_t *out_len, size_t max_bytes) {
+    if (status != 200) { conn_close(c); return MPCLINK_ERR_HTTP; }
+    if (clen < 44 || (unsigned long long)clen > (unsigned long long)max_bytes) { conn_close(c); return MPCLINK_ERR_HTTP; }
+    unsigned char *buf = (unsigned char *)malloc((size_t)clen);
+    if (!buf) { conn_close(c); return MPCLINK_ERR_IO; }
+    size_t got = 0;
+    ssize_t n = 0;
+    while (got < (size_t)clen && (n = conn_read(c, buf + got, (size_t)clen - got)) > 0) {
+        if (ctx->cancel) { n = -3; break; }
+        got += (size_t)n;
+    }
+    conn_close(c);
+    if (got != (size_t)clen) {
+        free(buf);
+        return n == -3 ? MPCLINK_ERR_CANCELLED : MPCLINK_ERR_NETWORK;
+    }
+    *out = buf;
+    *out_len = got;
+    return MPCLINK_OK;
+}
+
 int mpclink_fetch_preview(mpclink_ctx *ctx, const char *path, unsigned char **out, size_t *out_len, size_t max_bytes) {
     *out = NULL;
     *out_len = 0;
@@ -444,24 +467,26 @@ int mpclink_fetch_preview(mpclink_ctx *ctx, const char *path, unsigned char **ou
     int status; long long clen;
     int r = http_request(&c, ctx, "GET", target, NULL, -1, &status, &clen);
     if (r) return r;
-    if (status != 200) { conn_close(&c); return MPCLINK_ERR_HTTP; }
-    if (clen < 44 || (unsigned long long)clen > (unsigned long long)max_bytes) { conn_close(&c); return MPCLINK_ERR_HTTP; }
-    unsigned char *buf = (unsigned char *)malloc((size_t)clen);
-    if (!buf) { conn_close(&c); return MPCLINK_ERR_IO; }
-    size_t got = 0;
-    ssize_t n = 0;
-    while (got < (size_t)clen && (n = conn_read(&c, buf + got, (size_t)clen - got)) > 0) {
-        if (ctx->cancel) { n = -3; break; }
-        got += (size_t)n;
-    }
-    conn_close(&c);
-    if (got != (size_t)clen) {
-        free(buf);
-        return n == -3 ? MPCLINK_ERR_CANCELLED : MPCLINK_ERR_NETWORK;
-    }
-    *out = buf;
-    *out_len = got;
-    return MPCLINK_OK;
+    return read_preview(&c, ctx, status, clen, out, out_len, max_bytes);
+}
+
+int mpclink_preview_file(mpclink_ctx *ctx, const char *local_file, unsigned char **out, size_t *out_len, size_t max_bytes) {
+    *out = NULL;
+    *out_len = 0;
+    if (!local_file || !*local_file) return MPCLINK_ERR_ARG;
+    FILE *f = fopen(local_file, "rb");
+    if (!f) return MPCLINK_ERR_IO;
+    struct stat st;
+    if (fstat(fileno(f), &st) || !S_ISREG(st.st_mode)) { fclose(f); return MPCLINK_ERR_IO; }
+    char enc[1536], target[1700];
+    url_encode(base_name(local_file), enc, sizeof enc);
+    snprintf(target, sizeof target, "/api/preview-file?name=%s", enc);
+    conn_t c;
+    int status; long long clen;
+    int r = http_request(&c, ctx, "PUT", target, f, (long long)st.st_size, &status, &clen);
+    fclose(f);
+    if (r) return r;
+    return read_preview(&c, ctx, status, clen, out, out_len, max_bytes);
 }
 
 int mpclink_take_cue(mpclink_ctx *ctx, char *buf, size_t buf_len) {

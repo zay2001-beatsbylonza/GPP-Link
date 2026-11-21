@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"io"
 	"math"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func makeWav(format, channels uint16, rate uint32, bits uint16, frames int, val func(i, ch int) float64) []byte {
@@ -100,5 +106,36 @@ func TestPreviewWithFFmpeg(t *testing.T) {
 	}
 	if got := len(pcm) / 4; got < 43000 || got > 46000 {
 		t.Errorf("%d frames from a 1 s mp3, want about 44100", got)
+	}
+}
+
+// The cassette can play a file the MPC received: it sends the file, gets WAV back.
+func TestPreviewFile(t *testing.T) {
+	h := &hub{root: t.TempDir(), devices: map[string]time.Time{}}
+	srv := httptest.NewServer(http.HandlerFunc(h.previewFile))
+	defer srv.Close()
+	wav := makeWav(1, 1, 22050, 16, 22050, func(i, ch int) float64 { return 0.5 })
+	put := func(name string, body []byte, dev string) (*http.Response, []byte) {
+		req, _ := http.NewRequest("PUT", srv.URL+"/api/preview-file?name="+url.QueryEscape(name), bytes.NewReader(body))
+		if dev != "" {
+			req.Header.Set("X-MPC-Device", dev)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp, b
+	}
+	resp, b := put("Received Beat.wav", wav, "Live III")
+	if resp.StatusCode != 200 || len(b) != 44+44100*4 || string(b[:4]) != "RIFF" {
+		t.Fatalf("preview: %d, %d bytes", resp.StatusCode, len(b))
+	}
+	if resp, _ := put("notes.txt", []byte("x"), "Live III"); resp.StatusCode != 415 {
+		t.Fatalf("text file: %d", resp.StatusCode)
+	}
+	if resp, _ := put("a.wav", wav, ""); resp.StatusCode != 400 {
+		t.Fatalf("no device: %d", resp.StatusCode)
 	}
 }

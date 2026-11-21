@@ -62,6 +62,13 @@ $C inbox "$D" | grep -q 'received 1' || fail "inbox"
 $C inbox "$D" | grep -q 'received 0' || fail "inbox not cleared"
 [ -f "$D/hat.wav" ] || fail "inbox file"
 
+# the cassette plays a received file: the MPC sends it, the hub returns 16-bit stereo 44.1 kHz WAV
+python3 -c "import wave,struct; w=wave.open('$D/Received Beat.wav','wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050); w.writeframes(struct.pack('<h',8000)*22050); w.close()"
+$C preview-file "$D/Received Beat.wav" "$S/recv.wav" | grep -q 'preview 176444 bytes' || fail "preview-file"
+[ "$(head -c 4 "$S/recv.wav")" = "RIFF" ] || fail "preview-file not WAV"
+echo x > "$D/notes.txt"
+$C preview-file "$D/notes.txt" "$S/x.wav" >/dev/null 2>&1 && fail "preview-file of non-audio accepted"
+
 kill $HP; wait $HP 2>/dev/null || true
 $C list >/dev/null 2>&1 && fail "list with hub down"
 echo "e2e: all checks passed"
