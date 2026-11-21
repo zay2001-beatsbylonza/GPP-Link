@@ -16,7 +16,8 @@ status line, two reels that turn (a film strip following the "Reel" value),
 big PLAY / STOP button.
 
 The file pickers are drawn without the stock slider bar: the list's name in red,
-the picked file big in yellow, and "3 / 48" (a readout parameter) at the right.
+the picked file big in yellow (a Value label), and "3 / 48" (a readout parameter)
+at the right. An invisible value-only knob on top takes the touches.
 
 The result goes to plugin/skins/, which the SDK's build.py copies verbatim.
 Re-run this after changing parameter names or ui.json:
@@ -386,8 +387,10 @@ def main():
                     pick = copy.deepcopy(value_label)
                     pick["componentData"]["name"] = "pick"
                     pick["componentData"]["type"] = "Knob"
+                    # the knob only takes the turns and drags: its own text is see-through, because the
+                    # MPC doesn't draw a value-only knob's text; the "value" label under it shows the pick
                     pick["componentData"]["data"] = {"version": 4, "knobType": "ValueSlider",
-                                                     "textStyle": text_style(32 if w > SLOT_W else 26, "ffffd400", "left verticallyCentred", style="SemiBold"),
+                                                     "textStyle": text_style(26, "00000000", "left verticallyCentred"),
                                                      "dragOrientation": "Horizontal", "handleName": "Data"}
                     pick["handle remapping"] = {"version": 1, "map": []}
                     pick["bounds"] = bounds("No", 20, 42, w - 40, 54)
@@ -397,7 +400,9 @@ def main():
                         f,
                         label("name", "Name", "Data", 20, 12, w - 160, 30, text_style(19, "ffe53935", "left verticallyCentred", "Upper Case", "SemiBold")),
                         label("pos", "Value", "Pos", w - 150, 12, 130, 30, text_style(18, "ff9a9a9a", "right verticallyCentred")),
-                        pick,
+                        label("value", "Value", "Data", 20, 42, w - 40, 54,
+                              text_style(32 if w > SLOT_W else 26, "ffffd400", "left verticallyCentred", style="SemiBold")),
+                        pick,   # on top, so it gets the touches
                     ]
                     locals_.append({"key": key, "value": comp})
                 inst["componentData"]["type"] = key

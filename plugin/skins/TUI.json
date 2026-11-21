@@ -319,6 +319,43 @@
         "version": 2,
         "componentData": {
          "version": 1,
+         "name": "value",
+         "type": "Label",
+         "data": {
+          "version": 1,
+          "textStyle": {
+           "version": 1,
+           "font": {
+            "version": 1,
+            "name": "Titillium Web",
+            "style": "SemiBold",
+            "height": 26.0
+           },
+           "colour": "ffffd400",
+           "justification": "left verticallyCentred",
+           "case": "Original"
+          },
+          "type": "Value",
+          "handleName": "Data"
+         }
+        },
+        "handle remapping": {
+         "version": 1,
+         "map": []
+        },
+        "bounds": {
+         "version": 1,
+         "acceptsHWFocus": "No",
+         "showWhenDataModelInvalid": "Show",
+         "whenVisible": "Always",
+         "boundsType": "Absolute",
+         "bounds": "20 42 238 54"
+        }
+       },
+       {
+        "version": 2,
+        "componentData": {
+         "version": 1,
          "name": "pick",
          "type": "Knob",
          "data": {
@@ -329,10 +366,10 @@
            "font": {
             "version": 1,
             "name": "Titillium Web",
-            "style": "SemiBold",
+            "style": "Regular",
             "height": 26.0
            },
-           "colour": "ffffd400",
+           "colour": "00000000",
            "justification": "left verticallyCentred",
            "case": "Original"
           },
@@ -490,6 +527,43 @@
         "version": 2,
         "componentData": {
          "version": 1,
+         "name": "value",
+         "type": "Label",
+         "data": {
+          "version": 1,
+          "textStyle": {
+           "version": 1,
+           "font": {
+            "version": 1,
+            "name": "Titillium Web",
+            "style": "SemiBold",
+            "height": 32.0
+           },
+           "colour": "ffffd400",
+           "justification": "left verticallyCentred",
+           "case": "Original"
+          },
+          "type": "Value",
+          "handleName": "Data"
+         }
+        },
+        "handle remapping": {
+         "version": 1,
+         "map": []
+        },
+        "bounds": {
+         "version": 1,
+         "acceptsHWFocus": "No",
+         "showWhenDataModelInvalid": "Show",
+         "whenVisible": "Always",
+         "boundsType": "Absolute",
+         "bounds": "20 42 558 54"
+        }
+       },
+       {
+        "version": 2,
+        "componentData": {
+         "version": 1,
          "name": "pick",
          "type": "Knob",
          "data": {
@@ -500,10 +574,10 @@
            "font": {
             "version": 1,
             "name": "Titillium Web",
-            "style": "SemiBold",
-            "height": 32.0
+            "style": "Regular",
+            "height": 26.0
            },
-           "colour": "ffffd400",
+           "colour": "00000000",
            "justification": "left verticallyCentred",
            "case": "Original"
           },
@@ -661,6 +735,43 @@
         "version": 2,
         "componentData": {
          "version": 1,
+         "name": "value",
+         "type": "Label",
+         "data": {
+          "version": 1,
+          "textStyle": {
+           "version": 1,
+           "font": {
+            "version": 1,
+            "name": "Titillium Web",
+            "style": "SemiBold",
+            "height": 32.0
+           },
+           "colour": "ffffd400",
+           "justification": "left verticallyCentred",
+           "case": "Original"
+          },
+          "type": "Value",
+          "handleName": "Data"
+         }
+        },
+        "handle remapping": {
+         "version": 1,
+         "map": []
+        },
+        "bounds": {
+         "version": 1,
+         "acceptsHWFocus": "No",
+         "showWhenDataModelInvalid": "Show",
+         "whenVisible": "Always",
+         "boundsType": "Absolute",
+         "bounds": "20 42 878 54"
+        }
+       },
+       {
+        "version": 2,
+        "componentData": {
+         "version": 1,
          "name": "pick",
          "type": "Knob",
          "data": {
@@ -671,10 +782,10 @@
            "font": {
             "version": 1,
             "name": "Titillium Web",
-            "style": "SemiBold",
-            "height": 32.0
+            "style": "Regular",
+            "height": 26.0
            },
-           "colour": "ffffd400",
+           "colour": "00000000",
            "justification": "left verticallyCentred",
            "case": "Original"
           },
