@@ -119,7 +119,8 @@ type sampleDrive struct {
 // sampleCandidates lists the removable drives plugged into this computer.
 func sampleCandidates() []sampleDrive {
 	var out []sampleDrive
-	if runtime.GOOS == "windows" {
+	roots := sampleVolumeRoots()
+	if runtime.GOOS == "windows" && roots == nil {
 		sys := strings.ToUpper(strings.TrimSuffix(os.Getenv("SystemDrive"), ":"))
 		for c := 'D'; c <= 'Z'; c++ {
 			if string(c) == sys {
@@ -133,7 +134,7 @@ func sampleCandidates() []sampleDrive {
 		return out
 	}
 	seen := map[string]bool{}
-	for _, root := range sampleVolumeRoots() {
+	for _, root := range roots {
 		entries, err := os.ReadDir(root)
 		if err != nil {
 			continue
