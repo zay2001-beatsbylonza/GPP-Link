@@ -267,7 +267,7 @@ function renderSample() {
   const nouser = s.noUser ? `<p class="note" style="border-color:var(--accent)">Couldn't find the MPC Sample's <b>user</b> folder on this card, so beats go to <b>${where}</b> at the top of the card, where the MPC Sample may not see them. Save one project to External on the MPC Sample first (it makes the user folder), then plug back in.</p>` : '';
   const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send under External → <b>${where}</b>.</p>`;
   const busy = s.busy ? `<p class="note">Copying <b>${esc(s.busy)}</b>…</p>` : '';
-  const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = GPP Link folder)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
+  const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = user folder)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
   const list = s.files.slice(0, 300);
   const files = list.length
     ? `<ul>${list.map((f, i) => {

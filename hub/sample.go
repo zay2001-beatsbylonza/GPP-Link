@@ -249,10 +249,11 @@ func sampleUserDir(mount string) string {
 const sampleSendDirName = "GPP Link" // beats sent from the computer land in a folder of their own
 
 // sampleDefaultSendTo is where beats go unless the producer picks another
-// folder: "user/GPP Link" on a card with a user folder, else "GPP Link".
+// folder: straight into the MPC Sample's user folder (it doesn't look inside
+// extra folders there), or a "GPP Link" folder on a card without one.
 func sampleDefaultSendTo(mount string) string {
 	if u := sampleUserDir(mount); u != "" {
-		return u + "/" + sampleSendDirName
+		return u
 	}
 	return sampleSendDirName
 }
