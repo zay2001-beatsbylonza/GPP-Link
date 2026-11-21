@@ -6,7 +6,9 @@
 //   this track (a preview, nothing is saved), the reels turn, and 32 bars on the
 //   label bounce to the sound like a stereo's visualizer: bass on the left, highs
 //   on the right, mirrored around the centre line, the loudest tips in red.
-//   Pressing the same button again stops and rewinds to the front; the end rewinds too.
+//   Turning a picker while it plays keeps the beat playing (browse while you
+//   listen); PLAY on another beat switches to it, PLAY on the same beat stops and
+//   rewinds to the front; the end rewinds too.
 //   Four blocks under it, each a picker (turn a Q-Link) over a big button:
 //   SEND TO MPC        pick a beat on the computer ("Computer Files"); it lands in
 //                      "<drive>/From Computer/" on this MPC.
@@ -588,12 +590,21 @@ private:
         path = src ? inboxDir_ + "/" + rel : rel;
     }
 
+    // PLAY: start the pick; on the beat that's playing, stop; on another beat while one
+    // plays, switch to it. Turning a picker never stops the tape, so you can browse
+    // while you listen.
     void togglePlay()
     {
-        if (playing_) { stopTape("Stopped"); return; }
         int src, index;
         std::string key, path;
         tapePick(src, index, key, path);
+        if (playing_)
+        {
+            if (key.empty() || key == tapePath_) { stopTape("Stopped"); return; }
+            playing_ = false;   // switch: stop this one quietly, load the new pick below
+            shownPlaying_ = false;
+            pos_.store(0);
+        }
         if (key.empty())
         {
             setSelf(kPlay, 0.0f);
@@ -705,8 +716,6 @@ private:
             }
             return;
         }
-        if (tapeSrc_.load() != tapeSrcPlaying_ || getInt(tapeSrcPlaying_ ? kRecv : kMacBeat) != tapeIndex_)
-        { stopTape("Stopped"); return; }   // a new beat (or the other list) was picked
         setSelf(kReel, (float)((getInt(kReel) + 1) % kReelFrames));
         const double frame = (double)(pos_.load() >> 16);
         drawLive((size_t)frame);
@@ -934,10 +943,12 @@ private:
         if (posDirty_.exchange(false)) bumpCounters();
         if (playReq_.exchange(false))
         {
-            if (playing_) stopTape("Stopped");   // a tape already loaded can play without the Mac
-            else if (active_.load() && tapeSrc_.load() == tapeSrcPlaying_
-                     && tapeIndex_ == getInt(tapeSrcPlaying_ ? kRecv : kMacBeat)) togglePlay();
-            else { setSelf(kPlay, 0.0f); setActivity("Not connected yet"); }
+            int src, index;   // without the Mac, only the tape already loaded can play
+            std::string key, path;
+            tapePick(src, index, key, path);
+            if (playing_ && (key.empty() || key == tapePath_)) stopTape("Stopped");
+            else if (active_.load() && key == tapePath_) togglePlay();
+            else { if (playing_) stopTape("Stopped"); setSelf(kPlay, 0.0f); setActivity("Not connected yet"); }
         }
         tickTape();
     }

@@ -20,7 +20,7 @@ On any track, add an insert: **External VST Plugins → BeatsbyLonza → GPP Lin
 
 ### The cassette deck
 
-Pick a beat with **Computer Files** and press **PLAY** on the cassette to hear it through this track before you send it anywhere. The reels turn, the bars on the label bounce to the sound like a stereo's visualizer (bass on the left, highs on the right, red tips when it's loud), and the display shows the name and time. Press the same button (**STOP**) to stop and rewind to the front; the end of the beat rewinds too, and picking another beat stops the tape. MP3, WAV, AIFF, FLAC and M4A all play (your Mac converts them); nothing is saved on the MPC.
+Pick a beat with **Computer Files** and press **PLAY** on the cassette to hear it through this track before you send it anywhere. The reels turn, the bars on the label bounce to the sound like a stereo's visualizer (bass on the left, highs on the right, red tips when it's loud), and the display shows the name and time. Keep turning the pickers while it plays: the beat keeps going, so you can browse while you listen. Press **PLAY** on another beat to switch to it, or on the same beat (**STOP**) to stop and rewind to the front; the end of the beat rewinds too. MP3, WAV, AIFF, FLAC and M4A all play (your Mac converts them); nothing is saved on the MPC.
 
 ### The RECEIVED tab (side B)
 

@@ -212,7 +212,13 @@ int main(int argc, char** argv)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     press(e, kPlay);
     expectText(e, kStatus, "0:00 /", 10, "PLAY after STOP starts from the front");
+    // browse while it plays: turning the picker keeps the beat going
+    e->setParameter(e, kMacBeat, 1.0f / 999.0f);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    check(e->getParameter(e, kPlay) > 0.5f, "turning the picker keeps the beat playing", display(e, kPlay));
+    expectText(e, kStatus, "Trap Beat 140", 3, "the playing beat stays on the display");
+    e->setParameter(e, kMacBeat, 0.0f);   // back to the playing beat: PLAY now stops it
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
     press(e, kPlay);
 
     // RECEIVED tab: From Computer now holds Trap Beat 140.wav (and hat.wav from the phone queue)
