@@ -106,7 +106,7 @@ try { target = localStorage.getItem('mpclink.target'); } catch (e) {}
 
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), /^Could not/.test(msg) ? 10000 : 6000); }
 function size(n) { return n > 1073741824 ? (n/1073741824).toFixed(1)+' GB' : n > 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(n/1024))+' KB'; }
 function ago(t) { const s = Date.now()/1000 - t; return s < 60 ? 'now' : s < 3600 ? Math.round(s/60)+' min ago' : Math.round(s/3600)+' h ago'; }
 
@@ -153,8 +153,10 @@ function renderFiles() {
     const f = list[+b.dataset.i];
     b.disabled = true; b.textContent = 'Copying…';
     const r = await smpPost('/api/sample/send', { path: f.path });
-    if (r.ok) { b.textContent = 'On MPC Sample'; b.classList.add('done'); toast(f.name + ' is on the MPC Sample'); loadSample(); }
-    else { b.disabled = false; b.textContent = 'Send to MPC Sample'; toast('Could not send: ' + (await r.text()).trim()); }
+    const t = (await r.text()).trim();
+    if (r.ok) { let where = ''; try { where = JSON.parse(t).saved; } catch (e) {} b.textContent = 'On MPC Sample'; b.classList.add('done');
+      smpLast = `Last sent: <b>${esc(f.name)}</b> → card: <b>${esc(where)}</b>`; toast(f.name + ' is on the MPC Sample: ' + where); loadSample(); }
+    else { b.disabled = false; b.textContent = 'Send to MPC Sample'; smpLast = `Could not send <b>${esc(f.name)}</b>: ${esc(t)}`; toast('Could not send: ' + t); renderSample(); }
   });
   ul.querySelectorAll('.send').forEach(b => b.onclick = async () => {
     const f = list[+b.dataset.i];
@@ -222,7 +224,7 @@ function renderGPP() {
 }
 
 // ---- MPC SAMPLE GPP: the MPC Sample's card over USB-C (SD Card Mode) ----
-let smp = null, smpWasOn = null, smpChange = false, smpFolders = [], smpPick = '';
+let smp = null, smpWasOn = null, smpChange = false, smpFolders = [], smpPick = '', smpLast = '';
 async function loadSampleFolders() {
   try { smpFolders = await (await fetch('/api/sample/folders')).json() || []; } catch (e) {}
 }
@@ -274,7 +276,7 @@ function renderSample() {
           <button class="tofolder" data-i="${i}">Send to Folder</button>
           <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
     : `<p class="dim">No beats on the card yet.</p>`;
-  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy + nouser + tip +
+  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy + (smpLast ? `<p class="note">${smpLast}</p>` : '') + nouser + tip +
     `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
     `<p style="margin-top:4px"><b>Send a folder</b> <span class="dim">(sample packs, kits, stems from your Beats folder)</span></p>` +
     (smpFolders.length
@@ -301,6 +303,7 @@ function renderSample() {
     clearInterval(poll);
     const t = (await r.text()).trim();
     let msg = t; try { const j = JSON.parse(t); msg = j.files + ' files are on the MPC Sample in ' + j.saved; } catch (e) {}
+    smpLast = r.ok ? esc(msg) : 'Could not send the folder: ' + esc(t);
     toast(r.ok ? msg : 'Could not send the folder: ' + t);
     loadSample();
   };
@@ -310,8 +313,8 @@ function renderSample() {
     b.textContent = 'Copying…';
     const r = await smpPost('/api/sample/pull', { path: f.path, dest });
     const t = (await r.text()).trim();
-    if (r.ok) { toast(f.name + (dest === 'gpp' ? ' is going to Get Producers Paid as a draft' : ' is in From MPC/MPC Sample')); loadFiles(); loadGPP(); }
-    else toast('Could not send: ' + t);
+    if (r.ok) { const m = f.name + (dest === 'gpp' ? ' is going to Get Producers Paid as a draft' : ' is in From MPC/MPC Sample'); smpLast = esc(m); toast(m); loadFiles(); loadGPP(); }
+    else { smpLast = 'Could not send ' + esc(f.name) + ': ' + esc(t); toast('Could not send: ' + t); }
     await loadSample();
     if (r.ok) { const nb = box.querySelector(`.${dest==='gpp'?'togpp':'tofolder'}[data-i="${b.dataset.i}"]`); if (nb) { nb.textContent = doneLabel; nb.classList.add('done'); } }
   };
