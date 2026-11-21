@@ -46,6 +46,8 @@ func sampleSetup(t *testing.T) (*hub, *httptest.Server, string, string) {
 	mux.HandleFunc("POST /api/sample/pick", h.samplePick)
 	mux.HandleFunc("POST /api/sample/folder", h.sampleFolder)
 	mux.HandleFunc("POST /api/sample/send", h.sampleSend)
+	mux.HandleFunc("GET /api/sample/folders", h.sampleFolders)
+	mux.HandleFunc("POST /api/sample/sendfolder", h.sampleSendFolder)
 	mux.HandleFunc("POST /api/sample/pull", h.samplePull)
 	mux.HandleFunc("POST /api/sample/eject", h.sampleEjectRoute)
 	srv := httptest.NewServer(mux)
@@ -189,6 +191,52 @@ func TestMPCSampleGPP(t *testing.T) {
 	// copies need the header (another web site can't trigger them)
 	if code, _ := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "user/export/Chop 1.wav", "dest": "folder"}, false); code != 403 {
 		t.Fatalf("pull without header: %d", code)
+	}
+
+	// Send Folder to MPC Sample: a sample pack with a folder inside
+	pack := filepath.Join(root, "Packs", "Soul Chops")
+	os.MkdirAll(filepath.Join(pack, "Drums"), 0o755)
+	os.WriteFile(filepath.Join(pack, "Chop A.wav"), []byte("a"), 0o644)
+	os.WriteFile(filepath.Join(pack, "Drums", "Kick.wav"), []byte("k"), 0o644)
+	os.WriteFile(filepath.Join(pack, "readme.txt"), []byte("skip me"), 0o644)
+	resp, err := http.Get(srv.URL + "/api/sample/folders")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var folders []sampleFolderInfo
+	json.NewDecoder(resp.Body).Decode(&folders)
+	resp.Body.Close()
+	var got *sampleFolderInfo
+	for i := range folders {
+		if folders[i].Path == "Packs/Soul Chops" {
+			got = &folders[i]
+		}
+		if strings.HasPrefix(folders[i].Path, "From MPC") || strings.HasPrefix(folders[i].Path, "Get Producers Paid") {
+			t.Fatalf("listed %s", folders[i].Path)
+		}
+	}
+	if got == nil || got.Files != 2 {
+		t.Fatalf("folders: %+v", folders)
+	}
+	h.sample.mu.Lock()
+	h.sample.cfg.Folder = "user"
+	h.sample.mu.Unlock()
+	for _, want := range []string{"Soul Chops", "Soul Chops (2)"} {
+		code, body := samplePost(t, srv, "/api/sample/sendfolder", map[string]string{"path": "Packs/Soul Chops"}, true)
+		if code != 200 || !strings.Contains(body, `"files":2`) {
+			t.Fatalf("send folder: %d %s", code, body)
+		}
+		if b, _ := os.ReadFile(filepath.Join(card, "user", want, "Drums", "Kick.wav")); string(b) != "k" {
+			t.Fatalf("%s: kick %q", want, b)
+		}
+		if _, err := os.Stat(filepath.Join(card, "user", want, "readme.txt")); err == nil {
+			t.Fatal("non-audio file copied")
+		}
+	}
+	for _, p := range []string{"../Volumes", "Packs/Nope", "Trap Beat_140bpm.mp3"} {
+		if code, _ := samplePost(t, srv, "/api/sample/sendfolder", map[string]string{"path": p}, true); code == 200 {
+			t.Fatalf("sent folder %q", p)
+		}
 	}
 
 	// eject

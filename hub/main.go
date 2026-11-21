@@ -138,6 +138,8 @@ func main() {
 	mux.HandleFunc("POST /api/sample/pick", h.samplePick)
 	mux.HandleFunc("POST /api/sample/folder", h.sampleFolder)
 	mux.HandleFunc("POST /api/sample/send", h.sampleSend)
+	mux.HandleFunc("GET /api/sample/folders", h.sampleFolders)
+	mux.HandleFunc("POST /api/sample/sendfolder", h.sampleSendFolder)
 	mux.HandleFunc("POST /api/sample/pull", h.samplePull)
 	mux.HandleFunc("POST /api/sample/eject", h.sampleEjectRoute)
 

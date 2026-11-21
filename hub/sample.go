@@ -589,3 +589,139 @@ func (h *hub) sampleEjectRoute(w http.ResponseWriter, r *http.Request) {
 	log.Printf("MPC Sample: ejected %s", m)
 	writeJSON(w, map[string]any{"ok": true, "message": "Ejected. You can unplug the MPC Sample and leave SD Card Mode."})
 }
+
+// ---------- Send Folder to MPC Sample ----------
+
+const sampleMaxFolderFiles = 5000
+
+type sampleFolderInfo struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Files int    `json:"files"`
+	Bytes int64  `json:"bytes"`
+}
+
+// sampleFolderFiles lists the shareable files under dir (any depth), relative to dir.
+func sampleFolderFiles(dir string) (files []string, bytes int64) {
+	filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || p == dir {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() || d.Type()&fs.ModeSymlink != 0 || !allowedExt[strings.ToLower(filepath.Ext(p))] {
+			return nil
+		}
+		if len(files) >= sampleMaxFolderFiles {
+			return filepath.SkipAll
+		}
+		if info, err := d.Info(); err == nil {
+			bytes += info.Size()
+		}
+		rel, _ := filepath.Rel(dir, p)
+		files = append(files, rel)
+		return nil
+	})
+	return files, bytes
+}
+
+// sampleFolders lists the folders in the Beats folder that hold samples or
+// beats (sample packs, kits, stems), so one can go to the MPC Sample in one go.
+func (h *hub) sampleFolders(w http.ResponseWriter, r *http.Request) {
+	skip := map[string]bool{
+		filepath.Join(h.root, gppDirName):   true,
+		filepath.Join(h.root, inboxDirName): true,
+	}
+	out := []sampleFolderInfo{}
+	filepath.WalkDir(h.root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || !d.IsDir() || p == h.root {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") || skip[p] {
+			return filepath.SkipDir
+		}
+		rel, _ := filepath.Rel(h.root, p)
+		if strings.Count(rel, string(os.PathSeparator)) >= 3 {
+			return filepath.SkipDir
+		}
+		if files, bytes := sampleFolderFiles(p); len(files) > 0 {
+			out = append(out, sampleFolderInfo{Path: filepath.ToSlash(rel), Name: d.Name(), Files: len(files), Bytes: bytes})
+		}
+		return nil
+	})
+	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].Path) < strings.ToLower(out[j].Path) })
+	writeJSON(w, out)
+}
+
+// freeDirName returns dir, or "dir (2)", "dir (3)" ... if it's taken.
+func freeDirName(p string) string {
+	if _, err := os.Lstat(p); errors.Is(err, os.ErrNotExist) {
+		return p
+	}
+	for i := 2; ; i++ {
+		c := fmt.Sprintf("%s (%d)", p, i)
+		if _, err := os.Lstat(c); errors.Is(err, os.ErrNotExist) {
+			return c
+		}
+	}
+}
+
+// sampleSendFolder copies a whole folder from the Beats folder onto the card,
+// keeping its name and the folders inside it. An existing folder on the card
+// is left alone: the copy becomes "Pack (2)".
+func (h *hub) sampleSendFolder(w http.ResponseWriter, r *http.Request) {
+	if err := h.sampleAllowed(r, false); err != nil {
+		httpErr(w, 403, err)
+		return
+	}
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		httpErr(w, 400, err)
+		return
+	}
+	src, err := h.safePath(req.Path)
+	if err != nil {
+		httpErr(w, 400, err)
+		return
+	}
+	if info, err := os.Stat(src); err != nil || !info.IsDir() {
+		httpErr(w, 404, errors.New("folder not found"))
+		return
+	}
+	files, _ := sampleFolderFiles(src)
+	if len(files) == 0 {
+		httpErr(w, 404, errors.New("no samples or beats in that folder"))
+		return
+	}
+	m, cfg := h.sample.mount()
+	if m == "" {
+		httpErr(w, 409, errors.New("the MPC Sample isn't plugged in (put it in SD Card Mode)"))
+		return
+	}
+	dir := m
+	if cfg.Folder != "" {
+		if dir, err = sampleSafe(m, cfg.Folder); err != nil {
+			httpErr(w, 400, err)
+			return
+		}
+	}
+	dest := freeDirName(filepath.Join(dir, filepath.Base(src)))
+	name := filepath.Base(dest)
+	defer h.setSampleBusy("")
+	for i, rel := range files {
+		h.setSampleBusy(fmt.Sprintf("%s (%d of %d)", name, i+1, len(files)))
+		if _, err := copyNoOverwrite(filepath.Join(src, rel), filepath.Join(dest, filepath.Dir(rel)), filepath.Base(rel)); err != nil {
+			httpErr(w, 500, fmt.Errorf("copied %d of %d files, then: %v", i, len(files), err))
+			return
+		}
+	}
+	saved, _ := filepath.Rel(m, dest)
+	log.Printf("MPC Sample: sent folder %s -> card %s (%d files)", req.Path, filepath.ToSlash(saved), len(files))
+	writeJSON(w, map[string]any{"saved": filepath.ToSlash(saved), "files": len(files)})
+}

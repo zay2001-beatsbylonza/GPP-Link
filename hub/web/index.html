@@ -69,6 +69,8 @@
   .smp .ghost { background:transparent; color:var(--dim); border:1px solid var(--line); }
   .smp .eject { background:transparent; color:#fff; border:1px solid var(--accent); }
   .smp ul { margin:0 0 10px; }
+  .smp select { flex:1 1 200px; min-width:0; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:#000; color:var(--ink); font:inherit; }
+  .smp .sendfolder { background:var(--accent); color:#fff; }
   button.tofolder { border:1px solid var(--yellow); background:transparent; color:var(--yellow); border-radius:8px; padding:7px 10px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
   button.togpp, button.tosample { border:0; background:var(--accent); color:#fff; border-radius:8px; padding:8px 12px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
   button.tosample { background:var(--yellow); color:#000; }
@@ -220,12 +222,16 @@ function renderGPP() {
 }
 
 // ---- MPC SAMPLE GPP: the MPC Sample's card over USB-C (SD Card Mode) ----
-let smp = null, smpWasOn = null, smpChange = false;
+let smp = null, smpWasOn = null, smpChange = false, smpFolders = [], smpPick = '';
+async function loadSampleFolders() {
+  try { smpFolders = await (await fetch('/api/sample/folders')).json() || []; } catch (e) {}
+}
 function smpPost(url, body) {
   return fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-GPP-Link':'1'}, body: JSON.stringify(body || {}) });
 }
 async function loadSample() {
   try { smp = await (await fetch('/api/sample')).json(); } catch (e) { return; }
+  if (smp.connected && smpWasOn !== true) await loadSampleFolders();
   if (smpWasOn !== null && smpWasOn !== smp.connected) { toast(smp.connected ? 'MPC Sample connected' : 'MPC Sample unplugged'); renderFiles(); }
   smpWasOn = smp.connected;
   renderSample();
@@ -233,7 +239,7 @@ async function loadSample() {
 function renderSample() {
   const box = $('smp'), s = smp;
   if (!s) return;
-  if (document.activeElement && document.activeElement.id === 'smpfolder') return; // don't redraw while typing
+  if (document.activeElement && ['smpfolder','smpdir'].includes(document.activeElement.id)) return; // don't redraw while typing or picking
   const how = `<p class="note">Put your MPC Sample in <b>SD Card Mode</b> and plug it into this computer with USB-C.</p>`;
   if (!s.connected) {
     if (!s.drive || smpChange) {
@@ -268,6 +274,10 @@ function renderSample() {
     : `<p class="dim">No beats on the card yet.</p>`;
   box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})</span></p>` + busy +
     `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
+    `<p style="margin-top:4px"><b>Send a folder</b> <span class="dim">(sample packs, kits, stems from your Beats folder)</span></p>` +
+    (smpFolders.length
+      ? `<div class="row"><select id="smpdir">${smpFolders.map(f => `<option value="${esc(f.path)}" ${f.path===smpPick?'selected':''}>${esc(f.path)} (${f.files} file${f.files>1?'s':''}, ${size(f.bytes)})</option>`).join('')}</select><button class="sendfolder" id="smpsenddir" ${s.busy?'disabled':''}>Send Folder to MPC Sample</button></div>`
+      : `<p class="dim">No folders with samples in your Beats folder yet.</p>`) +
     `<p class="dim">On the card:</p>` + files +
     (s.canManage ? `<div class="row"><button class="eject" id="smpeject">Eject MPC Sample</button><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');
   const form = $('smpform');
@@ -276,6 +286,20 @@ function renderSample() {
     const r = await smpPost('/api/sample/folder', { folder: $('smpfolder').value });
     $('smpfolder').blur();
     toast(r.ok ? 'Saved' : 'Could not save: ' + (await r.text()).trim());
+    loadSample();
+  };
+  const sel = $('smpdir');
+  if (sel) sel.onchange = () => { smpPick = sel.value; sel.blur(); };
+  const sd = $('smpsenddir');
+  if (sd) sd.onclick = async () => {
+    const p = $('smpdir').value; smpPick = p;
+    sd.disabled = true; sd.textContent = 'Copying…';
+    const poll = setInterval(loadSample, 1000);
+    const r = await smpPost('/api/sample/sendfolder', { path: p });
+    clearInterval(poll);
+    const t = (await r.text()).trim();
+    let msg = t; try { const j = JSON.parse(t); msg = j.files + ' files are on the MPC Sample in ' + j.saved; } catch (e) {}
+    toast(r.ok ? msg : 'Could not send the folder: ' + t);
     loadSample();
   };
   const pull = (b, dest, label, doneLabel) => async () => {
@@ -308,6 +332,7 @@ setInterval(loadGPP, 4000);
 setInterval(loadDevices, 3000);
 setInterval(loadFiles, 15000);
 setInterval(loadSample, 3000);
+setInterval(() => { if (smp && smp.connected) loadSampleFolders(); }, 15000);
 </script>
 </body>
 </html>

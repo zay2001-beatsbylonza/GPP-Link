@@ -92,6 +92,7 @@ The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable i
 3. When it says **MPC Sample connected**:
    - The box opens the card's **user** folder by itself (where the MPC Sample keeps `export`), and lists the beats in it. The factory `samples` aren't listed.
    - **Send to MPC Sample** (on any beat in the Beats folder list) copies it into the `user` folder. To use another folder, type it in the folder box and click **Save folder** (blank = top of the card).
+   - **Send Folder to MPC Sample** copies a whole folder from your Beats folder (a sample pack, a kit, stems) into the `user` folder on the card, keeping its name and the folders inside it. Only audio, MIDI and MPC files are copied. If the card already has a folder with that name, the copy becomes `Pack (2)`.
    - **Send to Folder** (on a beat on the card) copies it into `Beats/From MPC/MPC Sample/`.
    - **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft like any other beat.
 4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Mode.
@@ -126,7 +127,7 @@ If `find` gets no answer (some routers block broadcasts), add `-h <Mac IP>`.
   - `GET /api/stems?format=tsv` (stems folders: `files<TAB>mtime<TAB>path`) and `POST /api/stems/send?path=<folder>` (the Mac copies it to `Get Producers Paid/Stems/`)
   - `GET /api/inbox`, files queued from the phone, then `POST /api/inbox/ack?path=<p>` for each one received
   - phone page: `GET /api/devices`, `POST /api/queue {"device","path"}`
-  - MPC SAMPLE GPP (hub page; POSTs need header `X-GPP-Link: 1`): `GET /api/sample`, `POST /api/sample/send {"path"}`, `POST /api/sample/pull {"path","dest":"folder"|"gpp"}`; from this computer only: `POST /api/sample/pick {"drive"}`, `POST /api/sample/folder {"folder"}`, `POST /api/sample/eject`
+  - MPC SAMPLE GPP (hub page; POSTs need header `X-GPP-Link: 1`): `GET /api/sample`, `POST /api/sample/send {"path"}`, `POST /api/sample/pull {"path","dest":"folder"|"gpp"}`, `GET /api/sample/folders`, `POST /api/sample/sendfolder {"path"}`; from this computer only: `POST /api/sample/pick {"drive"}`, `POST /api/sample/folder {"folder"}`, `POST /api/sample/eject`
 
 ## To confirm on the hardware
 
