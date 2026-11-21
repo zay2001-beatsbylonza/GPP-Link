@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -43,10 +44,49 @@ func (h *hub) preview(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 415, err)
 		return
 	}
+	writeWAV(w, data)
+}
+
+func writeWAV(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Type", "audio/wav")
 	w.Header().Set("Content-Length", fmt.Sprint(44+len(data)))
 	w.Write(wavHeader(len(data)))
 	w.Write(data)
+}
+
+const maxPreviewUpload = 512 << 20
+
+// previewFile converts a file the MPC sends (one it received, in From Computer)
+// for the cassette: PUT /api/preview-file?name=<file name> with the file as the
+// body. Nothing is kept on the computer.
+func (h *hub) previewFile(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.touch(r); !ok {
+		httpErr(w, 400, errors.New("send the MPC's name in the X-MPC-Device header"))
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(r.URL.Query().Get("name")))
+	if !audioExt[ext] {
+		httpErr(w, 415, errors.New("not an audio file"))
+		return
+	}
+	tmp, err := os.CreateTemp("", "gpplink-recv-*"+ext)
+	if err != nil {
+		httpErr(w, 500, err)
+		return
+	}
+	defer os.Remove(tmp.Name())
+	n, err := io.Copy(tmp, http.MaxBytesReader(w, r.Body, maxPreviewUpload))
+	tmp.Close()
+	if err != nil || (r.ContentLength >= 0 && n != r.ContentLength) {
+		httpErr(w, 400, errors.New("upload incomplete"))
+		return
+	}
+	data, err := previewPCM(tmp.Name())
+	if err != nil {
+		httpErr(w, 415, err)
+		return
+	}
+	writeWAV(w, data)
 }
 
 // previewPCM returns interleaved little-endian int16 stereo at 44.1 kHz.

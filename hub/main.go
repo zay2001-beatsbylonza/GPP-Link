@@ -125,6 +125,7 @@ func main() {
 	mux.HandleFunc("GET /api/list", h.list)
 	mux.HandleFunc("GET /api/file", h.download)
 	mux.HandleFunc("GET /api/preview", h.preview)
+	mux.HandleFunc("PUT /api/preview-file", h.previewFile)
 	mux.HandleFunc("GET /api/stems", h.listStems)
 	mux.HandleFunc("POST /api/stems/send", h.sendStems)
 	mux.HandleFunc("PUT /api/upload", h.upload)

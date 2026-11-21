@@ -93,6 +93,10 @@ int mpclink_send_stems(mpclink_ctx *ctx, const char *folder, int *files);
  * over max_bytes. */
 int mpclink_fetch_preview(mpclink_ctx *ctx, const char *path, unsigned char **out, size_t *out_len, size_t max_bytes);
 
+/* The same for a file on this MPC (one it received): sends it to the computer,
+ * which returns it as 16-bit stereo 44.1 kHz WAV. Nothing is kept there. */
+int mpclink_preview_file(mpclink_ctx *ctx, const char *local_file, unsigned char **out, size_t *out_len, size_t max_bytes);
+
 /* Has the phone page cued a beat for this MPC's Mac Beat picker? Writes its
  * path to buf ("" when nothing is cued). Each cue is returned once. */
 int mpclink_take_cue(mpclink_ctx *ctx, char *buf, size_t buf_len);

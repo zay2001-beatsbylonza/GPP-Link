@@ -9,6 +9,7 @@
  *   mpclink-cli ... send-stems <folder>          (Mac copies it to Get Producers Paid/Stems)
  *   mpclink-cli ... get <path in Beats folder> [dest dir]
  *   mpclink-cli ... inbox [dest dir]
+ *   mpclink-cli ... preview-file <local audio file> <out.wav>   (the cassette's audio for a received file)
  */
 #include "mpclink.h"
 #include <stdio.h>
@@ -22,7 +23,7 @@ static int print_entry(const mpclink_entry *e, void *user) {
 }
 
 static int usage(void) {
-    fprintf(stderr, "usage: mpclink-cli [-n name] [-h host[:port]] find|list|send FILE [REMOTE]|send-gpp FILE|stems|send-stems FOLDER|get PATH [DIR]|inbox [DIR]\n");
+    fprintf(stderr, "usage: mpclink-cli [-n name] [-h host[:port]] find|list|send FILE [REMOTE]|send-gpp FILE|stems|send-stems FOLDER|get PATH [DIR]|inbox [DIR]|preview-file FILE OUT\n");
     return 2;
 }
 
@@ -75,6 +76,17 @@ int main(int argc, char **argv) {
     } else if (!strcmp(cmd, "inbox")) {
         r = mpclink_poll_inbox(&ctx, i < argc ? argv[i] : mpclink_default_dest());
         if (r >= 0) { printf("received %d file(s)\n", r); r = 0; }
+    } else if (!strcmp(cmd, "preview-file") && i + 1 < argc) {
+        unsigned char *buf = NULL;
+        size_t len = 0;
+        r = mpclink_preview_file(&ctx, argv[i], &buf, &len, (size_t)128 << 20);
+        if (r == MPCLINK_OK) {
+            FILE *f = fopen(argv[i + 1], "wb");
+            if (!f || fwrite(buf, 1, len, f) != len) r = MPCLINK_ERR_IO;
+            if (f) fclose(f);
+            if (r == MPCLINK_OK) printf("preview %zu bytes\n", len);
+        }
+        free(buf);
     } else {
         return usage();
     }

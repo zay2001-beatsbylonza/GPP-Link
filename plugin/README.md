@@ -20,11 +20,24 @@ On any track, add an insert: **External VST Plugins → BeatsbyLonza → GPP Lin
 
 ### The cassette deck
 
-Pick a beat with **Computer Files** and press **PLAY** on the cassette to hear it through this track before you send it anywhere. The reels turn, the blue waveform scrolls past the red playhead like tape moving (bright blue has played, darker blue is coming), and the label shows the name and time. Press the same button (**STOP**) to stop and rewind to the front; the end of the beat rewinds too, and picking another beat stops the tape. MP3, WAV, AIFF, FLAC and M4A all play (your Mac converts them); nothing is saved on the MPC.
+Pick a beat with **Computer Files** and press **PLAY** on the cassette to hear it through this track before you send it anywhere. The reels turn, the bars on the label bounce to the sound like a stereo's visualizer (bass on the left, highs on the right, red tips when it's loud), and the display shows the name and time. Keep turning the pickers while it plays: the beat keeps going, so you can browse while you listen. Press **PLAY** on another beat to switch to it, or on the same beat (**STOP**) to stop and rewind to the front; the end of the beat rewinds too. MP3, WAV, AIFF, FLAC and M4A all play (your Mac converts them); nothing is saved on the MPC.
+
+### The RECEIVED tab (side B)
+
+The second tab lists what this MPC has **received**: the files in `From Computer`, newest first, with a counter of how many there are.
+
+- Turn **Received** (a Q-Link, or tap it and turn the data wheel) and press **PLAY**: the cassette plays the received beat. Your Mac turns it into audio for the cassette; nothing is kept there.
+- **SEND TO FOLDER** and **SEND TO GET PRODUCERS PAID** on this tab send the **received** beat you picked. **SEND TO MPC** and **SEND STEMS** work the same as on LINK.
+- The cassette plays whichever list you turned last: **Computer Files** or **Received**. The display says which ("Cassette: Received").
+- Load received beats into a program from the MPC browser: **MPC User › From Computer**.
+
+When new files arrive, every list keeps the file you picked.
+
+**Tip:** turning a Q-Link makes the MPC slide its Q-Link sidebar over the right of the screen. To scroll a list without it, tap the list and turn the **data wheel**.
 
 ### The four blocks
 
-Turn the Q-Link above a block to pick, then press its big button. Nothing is sent until you press.
+Turn the Q-Link above a block to pick (or tap the picker and turn the data wheel), then press its big button. Each picker shows where you are in its list, like `3 / 48`. Nothing is sent until you press.
 
 | Block | Pick with | What the button does |
 | --- | --- | --- |

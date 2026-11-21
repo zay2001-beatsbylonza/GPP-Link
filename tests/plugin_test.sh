@@ -56,4 +56,7 @@ MPCLINK_USER_DRIVE="$S/drive" MPC_PLUGIN_FOLDER="$PF" timeout 150 "$HOSTTEST" "$
 [ -f "$S/Beats/Get Producers Paid/my chop #1.wav" ] || { echo "FAIL: GPP file not in Get Producers Paid"; exit 1; }
 [ -f "$S/Beats/Get Producers Paid/Stems/Song B Stems/bass.wav" ] || { echo "FAIL: stems not copied to GPP"; exit 1; }
 [ ! -e "$S/Beats/From MPC/"*"/my chop #1.wav" ] || { echo "FAIL: GPP send also went to From MPC"; exit 1; }
+[ -f "$S/Beats/Get Producers Paid/Trap Beat 140.wav" ] || { echo "FAIL: received beat not sent to GPP"; exit 1; }
+[ -f "$S/Beats/From MPC/"*"/Trap Beat 140.wav" ] || { echo "FAIL: received beat not sent to From MPC"; exit 1; }
+[ -f "$S/drive/From Computer/Trap Beat 140.wav" ] || { echo "FAIL: the MPC should keep the received beat"; exit 1; }
 echo "plugin test: all checks passed"

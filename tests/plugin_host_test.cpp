@@ -19,7 +19,8 @@
 #include <thread>
 #include <vector>
 
-enum { kStatus, kMacBeat, kMpcBeat, kToMpc, kToFolder, kToGpp, kStems, kToStems, kPlay, kReel, kWave0 };
+enum { kStatus, kMacBeat, kMpcBeat, kToMpc, kToFolder, kToGpp, kStems, kToStems, kPlay, kReel, kWave0,
+       kRecv = kWave0 + 32, kMacPos, kMpcPos, kStemsPos, kRecvPos, kRecvCount, kRecvToFolder, kRecvToGpp };
 
 static std::atomic<int> automates{0}, updates{0};
 static std::atomic<bool> running{true};
@@ -168,16 +169,22 @@ int main(int argc, char** argv)
         check(loudest.load() > 0.02f, "the beat plays through the track", std::to_string(loudest.load()));
         float wave = 0.0f;
         for (int b = 0; b < 32; ++b) wave += e->getParameter(e, kWave0 + b);
-        check(wave > 0.0f, "waveform bars are drawn", std::to_string(wave));
+        check(wave > 0.0f, "visualizer bars are drawn", std::to_string(wave));
         const float r1 = e->getParameter(e, kReel);
         std::this_thread::sleep_for(std::chrono::milliseconds(400));
         check(e->getParameter(e, kReel) != r1, "reels turn", "");
-        const float bright = e->getParameter(e, kWave0 + 15);   // just behind the playhead
-        check(bright > 0.5f, "played bars turn bright", std::to_string(bright));
-        const float before = e->getParameter(e, kWave0 + 20);
-        std::this_thread::sleep_for(std::chrono::milliseconds(600));
-        check(e->getParameter(e, kWave0 + 20) != before, "the waveform scrolls",
-              std::to_string(before) + " -> " + std::to_string(e->getParameter(e, kWave0 + 20)));
+        // the test beat is a 220 Hz tone: the bass bars jump, the treble bars stay low
+        float bass = 0.0f, treble = 0.0f;
+        for (int b = 6; b < 13; ++b) bass = std::max(bass, e->getParameter(e, kWave0 + b));
+        for (int b = 26; b < 32; ++b) treble = std::max(treble, e->getParameter(e, kWave0 + b));
+        check(bass > treble + 0.1f, "the bars bounce to the sound (bass up, highs down)",
+              std::to_string(bass) + " vs " + std::to_string(treble));
+        // and they move: the tone swells, so the bass bar changes
+        float seen[2];
+        seen[0] = 0.0f; for (int b = 0; b < 32; ++b) seen[0] += e->getParameter(e, kWave0 + b);
+        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+        seen[1] = 0.0f; for (int b = 0; b < 32; ++b) seen[1] += e->getParameter(e, kWave0 + b);
+        check(seen[0] != seen[1], "the bars keep moving", std::to_string(seen[0]) + " -> " + std::to_string(seen[1]));
     }
     expectText(e, kStatus, "End of tape", 10, "stops at the end of the beat");
     {
@@ -205,8 +212,61 @@ int main(int argc, char** argv)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     press(e, kPlay);
     expectText(e, kStatus, "0:00 /", 10, "PLAY after STOP starts from the front");
+    // browse while it plays: turning the picker keeps the beat going
+    e->setParameter(e, kMacBeat, 1.0f / 999.0f);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    check(e->getParameter(e, kPlay) > 0.5f, "turning the picker keeps the beat playing", display(e, kPlay));
+    expectText(e, kStatus, "Trap Beat 140", 3, "the playing beat stays on the display");
+    e->setParameter(e, kMacBeat, 0.0f);   // back to the playing beat: PLAY now stops it
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
     press(e, kPlay);
+
+    // RECEIVED tab: From Computer now holds Trap Beat 140.wav (and hat.wav from the phone queue)
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    expectText(e, kMacPos, " / ", 5, "Computer Files shows its place in the list");
+    {
+        bool counted = false;   // the list rescans every few seconds
+        for (int t = 0; t < 300 && !counted; ++t)
+        {
+            counted = display(e, kRecvCount) != "0";
+            if (!counted) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        check(counted, "the counter shows the received files", display(e, kRecvCount));
+    }
+    bool found = false;   // turn Received until it shows the test beat
+    for (int i = 0; i < 3 && !found; ++i)
+    {
+        e->setParameter(e, kRecv, (float)i / 999.0f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        found = display(e, kRecv).find("Trap Beat 140") != std::string::npos;
+    }
+    check(found, "Received lists the beat that arrived in From Computer", display(e, kRecv));
+    expectText(e, kRecvPos, " / ", 5, "Received shows its place in the list");
+    expectText(e, kStatus, "Cassette: Received", 5, "turning Received switches the cassette to it");
+    press(e, kPlay);
+    expectText(e, kStatus, "/ 0:03", 20, "PLAY plays the received beat (the Mac converts it)");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    press(e, kPlay);
+    {
+        bool off = false;
+        for (int t = 0; t < 40 && !(off = e->getParameter(e, kPlay) < 0.5f); ++t)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        check(off, "STOP stops the received beat", display(e, kPlay));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    press(e, kRecvToGpp);
+    expectText(e, kStatus, "Sent to GPP: Trap Beat 140", 20, "SEND TO GPP on RECEIVED sends the received beat");
+    {
+        bool up = false;
+        for (int t = 0; t < 20 && !(up = e->getParameter(e, kRecvToGpp) < 0.5f); ++t)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        check(up, "the RECEIVED button pops back up", display(e, kRecvToGpp));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    press(e, kRecvToFolder);
+    expectText(e, kStatus, "Sent Trap Beat 140", 20, "SEND TO FOLDER on RECEIVED sends the received beat");
+    e->setParameter(e, kMacBeat, 0.0f);
+    expectText(e, kStatus, "Cassette: Computer Files", 5, "turning Computer Files switches the cassette back");
 
     // phone queue: the test script queues hat.wav for this device once it appears
     expectFile(drive + "/From Computer/hat.wav", 30, "phone queue delivers");
