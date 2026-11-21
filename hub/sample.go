@@ -111,8 +111,9 @@ func sampleFits(mount, what string, bytes int64, files int) error {
 }
 
 type sampleConfig struct {
-	Drive  string `json:"drive"`  // the drive's name, e.g. "MPC SAMPLE"
-	Folder string `json:"folder"` // where beats go on the card ("" = the top of the card)
+	Drive     string `json:"drive"`     // the drive's name, e.g. "MPC SAMPLE"
+	SendTo    string `json:"sendTo"`    // where beats go on the card, if the producer changed it
+	SendToSet bool   `json:"sendToSet"` // false: use sampleDefaultSendTo
 }
 
 type sampleManager struct {
@@ -204,6 +205,34 @@ func sampleUserDir(mount string) string {
 		}
 	}
 	return ""
+}
+
+const sampleSendDirName = "GPP Link" // beats sent from the computer land in a folder of their own
+
+// sampleDefaultSendTo is where beats go unless the producer picks another
+// folder: "user/GPP Link" on a card with a user folder, else "GPP Link".
+func sampleDefaultSendTo(mount string) string {
+	if u := sampleUserDir(mount); u != "" {
+		return u + "/" + sampleSendDirName
+	}
+	return sampleSendDirName
+}
+
+// sendTo returns where beats go on the card mounted at m.
+func (c sampleConfig) sendTo(m string) string {
+	if c.SendToSet {
+		return c.SendTo
+	}
+	return sampleDefaultSendTo(m)
+}
+
+// sampleDest resolves the send-to folder on the card (it's created on the first send).
+func sampleDest(m string, cfg sampleConfig) (string, error) {
+	f := cfg.sendTo(m)
+	if f == "" {
+		return m, nil
+	}
+	return sampleSafe(m, f)
 }
 
 // mount returns where the chosen drive is mounted, or "" if it isn't plugged in.
@@ -300,7 +329,7 @@ func copyNoOverwrite(src, dir, name string) (string, error) {
 type sampleStatus struct {
 	Connected  bool          `json:"connected"`
 	Drive      string        `json:"drive,omitempty"` // the remembered drive
-	Folder     string        `json:"folder"`          // where beats go on the card
+	Folder     string        `json:"folder"`          // where beats go on the card (relative to it)
 	Candidates []sampleDrive `json:"candidates"`      // drives to pick from
 	Files      []entry       `json:"files"`           // beats on the card
 	More       bool          `json:"more,omitempty"`  // the card has more than we listed
@@ -312,7 +341,7 @@ type sampleStatus struct {
 func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 	s := h.sample
 	m, cfg := s.mount()
-	st := sampleStatus{Drive: cfg.Drive, Folder: cfg.Folder, Candidates: sampleCandidates(), Files: []entry{},
+	st := sampleStatus{Drive: cfg.Drive, Candidates: sampleCandidates(), Files: []entry{},
 		CanManage: h.isLocalRequest(r)}
 	if st.Candidates == nil {
 		st.Candidates = []sampleDrive{}
@@ -326,24 +355,12 @@ func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	st.Connected = true
 	st.Free = sampleFreeSpace(m)
-	if cfg.Folder == "" { // picked before the user folder existed, or an older setting
-		if u := sampleUserDir(m); u != "" {
-			s.mu.Lock()
-			s.cfg.Folder = u
-			s.saveLocked()
-			s.mu.Unlock()
-			st.Folder = u
-		}
-	}
-	// list only the folder the producer works in (the card's user folder), not
-	// the factory kits; paths stay relative to the top of the card
+	st.Folder = cfg.sendTo(m)
+	// list the producer's own folder (the card's user folder, with exports and
+	// the GPP Link folder), not the factory kits; paths stay relative to the card
 	top := m
-	if st.Folder != "" {
-		if p, err := sampleSafe(m, st.Folder); err == nil {
-			if info, err := os.Stat(p); err == nil && info.IsDir() {
-				top = p
-			}
-		}
+	if u := sampleUserDir(m); u != "" {
+		top = filepath.Join(m, u)
 	}
 	n := 0
 	filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
@@ -426,12 +443,7 @@ func (h *hub) samplePick(w http.ResponseWriter, r *http.Request) {
 	s := h.sample
 	s.mu.Lock()
 	if s.cfg.Drive != req.Drive {
-		s.cfg.Folder = ""
-		for _, d := range sampleCandidates() {
-			if d.Name == req.Drive {
-				s.cfg.Folder = sampleUserDir(d.mount) // open the card's user folder
-			}
-		}
+		s.cfg.SendTo, s.cfg.SendToSet = "", false
 	}
 	s.cfg.Drive = req.Drive
 	err := s.saveLocked()
@@ -470,14 +482,15 @@ func (h *hub) sampleFolder(w http.ResponseWriter, r *http.Request) {
 	}
 	s := h.sample
 	s.mu.Lock()
-	s.cfg.Folder = f
+	s.cfg.SendTo, s.cfg.SendToSet = f, f != "" // blank: back to the GPP Link folder
 	err := s.saveLocked()
 	s.mu.Unlock()
 	if err != nil {
 		httpErr(w, 500, err)
 		return
 	}
-	writeJSON(w, map[string]any{"ok": true, "folder": f})
+	m, cfg := h.sample.mount()
+	writeJSON(w, map[string]any{"ok": true, "folder": cfg.sendTo(m)})
 }
 
 func (h *hub) setSampleBusy(what string) {
@@ -513,12 +526,10 @@ func (h *hub) sampleSend(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 409, errors.New("the MPC Sample isn't plugged in (put it in SD Card Mode)"))
 		return
 	}
-	dir := m
-	if cfg.Folder != "" {
-		if dir, err = sampleSafe(m, cfg.Folder); err != nil {
-			httpErr(w, 400, err)
-			return
-		}
+	dir, err := sampleDest(m, cfg)
+	if err != nil {
+		httpErr(w, 400, err)
+		return
 	}
 	name := filepath.Base(src)
 	if info, err := os.Stat(src); err == nil {
@@ -743,12 +754,10 @@ func (h *hub) sampleSendFolder(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 409, errors.New("the MPC Sample isn't plugged in (put it in SD Card Mode)"))
 		return
 	}
-	dir := m
-	if cfg.Folder != "" {
-		if dir, err = sampleSafe(m, cfg.Folder); err != nil {
-			httpErr(w, 400, err)
-			return
-		}
+	dir, err := sampleDest(m, cfg)
+	if err != nil {
+		httpErr(w, 400, err)
+		return
 	}
 	if err := sampleFits(m, filepath.Base(src), total, len(files)); err != nil {
 		httpErr(w, 507, err)

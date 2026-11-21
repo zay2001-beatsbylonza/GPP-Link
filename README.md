@@ -87,12 +87,13 @@ From then on:
 
 The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable instead. Use the **MPC SAMPLE GPP** box on the hub page (**http://localhost:47800** on the computer the hub runs on).
 
-1. On the MPC Sample, turn on **SD Card Mode**, then plug it into the computer with USB-C. Its card shows up as a drive.
+1. Put a microSD card in the MPC Sample. On its Project page, turn on **SD Card Access**, then plug it into the computer with USB-C. Its card shows up as a drive.
 2. The first time, the box asks **Which drive is your MPC Sample?** Click its drive. The hub remembers it.
 3. When it says **MPC Sample connected**:
-   - The box opens the card's **user** folder by itself (where the MPC Sample keeps `export`), and lists the beats in it. The factory `samples` aren't listed.
-   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it into the `user` folder. To use another folder, type it in the folder box and click **Save folder** (blank = top of the card).
-   - **Send Folder to MPC Sample** copies a whole folder from your Beats folder (a sample pack, a kit, stems) into the `user` folder on the card, keeping its name and the folders inside it. Only audio, MIDI and MPC files are copied. If the card already has a folder with that name, the copy becomes `Pack (2)`.
+   - Only the **microSD card** (External on the MPC Sample) shows up on the computer, never the internal drive. On the MPC Sample, save or export to **External** (press **B2** in the browser) so your beats show up here.
+   - The box lists the beats in the card's **user** folder (including `user/export`). The factory `samples` aren't listed.
+   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it into **`user/GPP Link`** on the card (made the first time). On the MPC Sample, look under External → user → GPP Link. To use another folder, type it in the folder box and click **Save folder** (blank = back to `user/GPP Link`).
+   - **Send Folder to MPC Sample** copies a whole folder from your Beats folder (a sample pack, a kit, stems) into `user/GPP Link` on the card, keeping its name and the folders inside it. Only audio, MIDI and MPC files are copied. If the card already has a folder with that name, the copy becomes `Pack (2)`.
    - The box shows how much space is free on the card. A beat or folder that won't fit isn't sent at all ("Soul Chops needs 1.2 GB, the MPC Sample has 800 MB free"). If a folder copy stops partway (the cable is pulled), the partial folder is removed from the card.
    - **Send to Folder** (on a beat on the card) copies it into `Beats/From MPC/MPC Sample/`.
    - **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft like any other beat.
