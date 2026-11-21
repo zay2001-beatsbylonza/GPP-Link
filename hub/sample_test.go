@@ -22,17 +22,17 @@ func sampleSetup(t *testing.T) (*hub, *httptest.Server, string, string) {
 	beats := filepath.Join(tmp, "Beats")
 	vols := filepath.Join(tmp, "Volumes")
 	card := filepath.Join(vols, "MPC SAMPLE")
-	for _, d := range []string{beats, card, filepath.Join(vols, "USB STICK"), filepath.Join(card, "samples"), filepath.Join(card, "user", "export")} {
+	for _, d := range []string{beats, card, filepath.Join(vols, "USB STICK"), filepath.Join(card, "MPC-Sample", "Samples"), filepath.Join(card, "MPC-Sample", "user", "export")} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
 	os.WriteFile(filepath.Join(beats, "Trap Beat_140bpm.mp3"), []byte("beat-bytes"), 0o644)
 	os.WriteFile(filepath.Join(beats, "notes.txt"), []byte("no"), 0o644)
-	os.WriteFile(filepath.Join(card, "samples", "Factory Kick.wav"), []byte("factory"), 0o644)
-	os.WriteFile(filepath.Join(card, "user", "export", "Chop 1.wav"), []byte("chop-bytes"), 0o644)
-	os.WriteFile(filepath.Join(card, "user", "Pattern.mid"), []byte("midi"), 0o644)
-	os.WriteFile(filepath.Join(card, "user", "export", "user/export/._Chop 1.wav"), []byte("mac junk"), 0o644)
+	os.WriteFile(filepath.Join(card, "MPC-Sample", "Samples", "Factory Kick.wav"), []byte("factory"), 0o644)
+	os.WriteFile(filepath.Join(card, "MPC-Sample", "user", "export", "Chop 1.wav"), []byte("chop-bytes"), 0o644)
+	os.WriteFile(filepath.Join(card, "MPC-Sample", "user", "export", "Pattern.mid"), []byte("midi"), 0o644)
+	os.WriteFile(filepath.Join(card, "MPC-Sample", "user", "export", "._Chop 1.wav"), []byte("mac junk"), 0o644)
 	os.Symlink("/", filepath.Join(vols, "Macintosh HD")) // the Mac's own disk
 
 	oldRoots, oldEject, oldFree := sampleVolumeRoots, sampleEject, sampleFreeSpace
@@ -118,7 +118,7 @@ func TestMPCSampleGPP(t *testing.T) {
 	// connected: the user folder opens by itself; its beats are listed, not the
 	// factory samples or Mac junk files
 	s = sampleGet(t, srv)
-	if !s.Connected || s.Drive != "MPC SAMPLE" || s.Folder != "user" || len(s.Files) != 2 {
+	if !s.Connected || s.Drive != "MPC SAMPLE" || s.Folder != "MPC-Sample/Samples/GPP Link" || len(s.Files) != 2 {
 		t.Fatalf("after picking: %+v", s)
 	}
 	for _, f := range s.Files {
@@ -132,13 +132,13 @@ func TestMPCSampleGPP(t *testing.T) {
 		t.Fatalf("not remembered: %+v", again.cfg)
 	}
 
-	// Send to MPC Sample: straight into user/, then a second copy gets (2)
+	// Send to MPC Sample: into MPC-Sample/Samples/GPP Link, then a second copy gets (2)
 	for _, want := range []string{"Trap Beat_140bpm.mp3", "Trap Beat_140bpm (2).mp3"} {
 		code, body := samplePost(t, srv, "/api/sample/send", map[string]string{"path": "Trap Beat_140bpm.mp3"}, true)
 		if code != 200 || !strings.Contains(body, want) {
 			t.Fatalf("send: %d %s", code, body)
 		}
-		if b, _ := os.ReadFile(filepath.Join(card, "user", want)); string(b) != "beat-bytes" {
+		if b, _ := os.ReadFile(filepath.Join(card, "MPC-Sample", "Samples", "GPP Link", want)); string(b) != "beat-bytes" {
 			t.Fatalf("card copy %s: %q", want, b)
 		}
 	}
@@ -164,34 +164,34 @@ func TestMPCSampleGPP(t *testing.T) {
 	}
 
 	// Send to Folder: lands in From MPC/MPC Sample/
-	if code, body := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "user/export/Chop 1.wav", "dest": "folder"}, true); code != 200 {
+	if code, body := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "MPC-Sample/user/export/Chop 1.wav", "dest": "folder"}, true); code != 200 {
 		t.Fatalf("pull to folder: %d %s", code, body)
 	}
 	if b, _ := os.ReadFile(filepath.Join(root, "From MPC", "MPC Sample", "Chop 1.wav")); string(b) != "chop-bytes" {
 		t.Fatalf("pulled: %q", b)
 	}
 	// Send to GPP: lands in Get Producers Paid/; MIDI can't go there
-	if code, body := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "user/export/Chop 1.wav", "dest": "gpp"}, true); code != 200 {
+	if code, body := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "MPC-Sample/user/export/Chop 1.wav", "dest": "gpp"}, true); code != 200 {
 		t.Fatalf("pull to gpp: %d %s", code, body)
 	}
 	if _, err := os.Stat(filepath.Join(root, "Get Producers Paid", "Chop 1.wav")); err != nil {
 		t.Fatal(err)
 	}
-	if code, _ := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "user/Pattern.mid", "dest": "gpp"}, true); code != 415 {
+	if code, _ := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "MPC-Sample/user/export/Pattern.mid", "dest": "gpp"}, true); code != 415 {
 		t.Fatalf("midi to gpp: %d", code)
 	}
 	// nothing outside the card, no hidden files, no unknown destinations
 	for _, req := range []map[string]string{
 		{"path": "../USB STICK/x.wav", "dest": "folder"},
-		{"path": "user/export/._Chop 1.wav", "dest": "folder"},
-		{"path": "user/export/Chop 1.wav", "dest": "elsewhere"},
+		{"path": "MPC-Sample/user/export/._Chop 1.wav", "dest": "folder"},
+		{"path": "MPC-Sample/user/export/Chop 1.wav", "dest": "elsewhere"},
 	} {
 		if code, _ := samplePost(t, srv, "/api/sample/pull", req, true); code == 200 {
 			t.Fatalf("pulled %v", req)
 		}
 	}
 	// copies need the header (another web site can't trigger them)
-	if code, _ := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "user/export/Chop 1.wav", "dest": "folder"}, false); code != 403 {
+	if code, _ := samplePost(t, srv, "/api/sample/pull", map[string]string{"path": "MPC-Sample/user/export/Chop 1.wav", "dest": "folder"}, false); code != 403 {
 		t.Fatalf("pull without header: %d", code)
 	}
 
@@ -220,8 +220,8 @@ func TestMPCSampleGPP(t *testing.T) {
 	if got == nil || got.Files != 2 {
 		t.Fatalf("folders: %+v", folders)
 	}
-	// blank folder: back to user
-	if code, body := samplePost(t, srv, "/api/sample/folder", map[string]string{"folder": ""}, true); code != 200 || !strings.Contains(body, `"folder":"user"`) {
+	// blank folder: back to MPC-Sample/Samples/GPP Link
+	if code, body := samplePost(t, srv, "/api/sample/folder", map[string]string{"folder": ""}, true); code != 200 || !strings.Contains(body, `MPC-Sample/Samples/GPP Link`) {
 		t.Fatalf("reset folder: %d %s", code, body)
 	}
 	// sent beats show up in the card list
@@ -233,10 +233,10 @@ func TestMPCSampleGPP(t *testing.T) {
 		if code != 200 || !strings.Contains(body, `"files":2`) {
 			t.Fatalf("send folder: %d %s", code, body)
 		}
-		if b, _ := os.ReadFile(filepath.Join(card, "user", want, "Drums", "Kick.wav")); string(b) != "k" {
+		if b, _ := os.ReadFile(filepath.Join(card, "MPC-Sample", "Samples", "GPP Link", want, "Drums", "Kick.wav")); string(b) != "k" {
 			t.Fatalf("%s: kick %q", want, b)
 		}
-		if _, err := os.Stat(filepath.Join(card, "user", want, "readme.txt")); err == nil {
+		if _, err := os.Stat(filepath.Join(card, "MPC-Sample", "Samples", "GPP Link", want, "readme.txt")); err == nil {
 			t.Fatal("non-audio file copied")
 		}
 	}
@@ -252,7 +252,7 @@ func TestMPCSampleGPP(t *testing.T) {
 	if code != 507 || !strings.Contains(body, "free") {
 		t.Fatalf("too-big folder: %d %s", code, body)
 	}
-	if _, err := os.Stat(filepath.Join(card, "user", "Soul Chops (3)")); err == nil {
+	if _, err := os.Stat(filepath.Join(card, "MPC-Sample", "Samples", "GPP Link", "Soul Chops (3)")); err == nil {
 		t.Fatal("partial folder written")
 	}
 	sampleFreeSpace = func(string) int64 { return 1 } // 1 byte
@@ -267,7 +267,7 @@ func TestMPCSampleGPP(t *testing.T) {
 		if code != 500 || !strings.Contains(body, "removed") {
 			t.Fatalf("failed folder: %d %s", code, body)
 		}
-		if _, err := os.Stat(filepath.Join(card, "user", "Soul Chops (3)")); err == nil {
+		if _, err := os.Stat(filepath.Join(card, "MPC-Sample", "Samples", "GPP Link", "Soul Chops (3)")); err == nil {
 			t.Fatal("partial folder left on the card")
 		}
 	}
@@ -299,19 +299,46 @@ func TestMPCSampleGPP(t *testing.T) {
 	}
 }
 
-// The user folder can sit inside an MPC-Sample folder on the card.
-func TestMPCSampleNestedUserFolder(t *testing.T) {
+// Where beats go, and what happens on a card without an MPC-Sample folder.
+func TestMPCSampleFolders(t *testing.T) {
 	m := t.TempDir()
-	os.MkdirAll(filepath.Join(m, "MPC-Sample", "samples", "user"), 0o755) // factory kit named user: ignored
-	os.MkdirAll(filepath.Join(m, "MPC-Sample", "User", "export"), 0o755)
-	os.MkdirAll(filepath.Join(m, "Other", "user"), 0o755)
-	if got := sampleUserDir(m); got != "MPC-Sample/User" {
-		t.Fatalf("user folder: %q", got)
+	if got := sampleDefaultSendTo(m); got != "" {
+		t.Fatalf("empty card: %q", got)
 	}
-	if got := sampleDefaultSendTo(m); got != "MPC-Sample/User" {
+	if _, err := sampleDest(m, sampleConfig{}); !errors.Is(err, errNoSampleFolder) {
+		t.Fatalf("empty card dest: %v", err) // never the top of the card
+	}
+	os.MkdirAll(filepath.Join(m, "MPC-Sample", "user", "export"), 0o755)
+	if got := sampleDefaultSendTo(m); got != "MPC-Sample/Samples/GPP Link" {
+		t.Fatalf("no Samples yet: %q", got)
+	}
+	os.MkdirAll(filepath.Join(m, "MPC-Sample", "samples"), 0o755) // letter case as on the card
+	if got := sampleDefaultSendTo(m); got != "MPC-Sample/samples/GPP Link" {
 		t.Fatalf("send to: %q", got)
 	}
-	if got := sampleUserDir(t.TempDir()); got != "" {
-		t.Fatalf("empty card: %q", got)
+	if got := sampleUserDir(m); got != "MPC-Sample/user" {
+		t.Fatalf("user: %q", got)
+	}
+}
+
+// A card without an MPC-Sample folder: nothing is sent, nothing lands loose on the card.
+func TestMPCSampleNoFolderRefuses(t *testing.T) {
+	_, srv, _, card := sampleSetup(t)
+	os.RemoveAll(filepath.Join(card, "MPC-Sample"))
+	if code, body := samplePost(t, srv, "/api/sample/pick", map[string]string{"drive": "MPC SAMPLE"}, true); code != 200 {
+		t.Fatalf("pick: %d %s", code, body)
+	}
+	if s := sampleGet(t, srv); !s.Connected || !s.NoRoot || s.Folder != "" {
+		t.Fatalf("status: %+v", s)
+	}
+	code, body := samplePost(t, srv, "/api/sample/send", map[string]string{"path": "Trap Beat_140bpm.mp3"}, true)
+	if code != 409 || !strings.Contains(body, "MPC-Sample") {
+		t.Fatalf("send: %d %s", code, body)
+	}
+	entries, _ := os.ReadDir(card)
+	for _, e := range entries {
+		if !e.IsDir() {
+			t.Fatalf("file left on the card: %s", e.Name())
+		}
 	}
 }

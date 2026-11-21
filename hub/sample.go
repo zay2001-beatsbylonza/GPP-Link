@@ -195,70 +195,67 @@ func sampleCandidates() []sampleDrive {
 	return out
 }
 
-// sampleUserDir finds the MPC Sample's user folder on the card (where its
-// exports live), relative to the card: "user" at the top, or one or two levels
-// down (e.g. "MPC-Sample/user"). A user folder holding "export" wins. It
-// returns "" if the card has none.
-func sampleUserDir(mount string) string {
-	type cand struct {
-		rel    string
-		export bool
-	}
-	var found []cand
-	level := []string{""}
-	for depth := 0; depth < 3 && len(level) > 0; depth++ {
-		var next []string
-		for _, rel := range level {
-			entries, _ := os.ReadDir(filepath.Join(mount, filepath.FromSlash(rel)))
-			for _, e := range entries {
-				n := e.Name()
-				if !e.IsDir() || strings.HasPrefix(n, ".") || strings.HasPrefix(n, "$") || n == "System Volume Information" {
-					continue
-				}
-				r := path.Join(rel, n)
-				if strings.EqualFold(n, "user") {
-					hasExport := false
-					sub, _ := os.ReadDir(filepath.Join(mount, filepath.FromSlash(r)))
-					for _, x := range sub {
-						if x.IsDir() && strings.EqualFold(x.Name(), "export") {
-							hasExport = true
-						}
-					}
-					found = append(found, cand{r, hasExport})
-					continue
-				}
-				if !strings.EqualFold(n, "samples") { // the factory kits can't hold the user folder
-					next = append(next, r)
-				}
-			}
+// The MPC Sample keeps its things in one folder on the card:
+//
+//	MPC-Sample/Samples/       samples it loads (its Sample Browser lists this)
+//	MPC-Sample/user/export/   songs it exports
+//
+// GPP Link sends beats and sample packs into MPC-Sample/Samples/GPP Link, reads
+// songs from MPC-Sample/user/export, and never writes anywhere else on its own.
+
+const sampleSendDirName = "GPP Link" // beats sent from the computer stay together here
+
+// errNoSampleFolder: the card has no MPC-Sample folder yet.
+var errNoSampleFolder = errors.New("couldn't find the MPC-Sample folder on this card. On the MPC Sample, save one sample to External (B2) so it makes the folder, then plug back in")
+
+// sampleChild returns the name of the folder in dir called name (any letter case), or "".
+func sampleChild(dir, name string) string {
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if e.IsDir() && strings.EqualFold(e.Name(), name) {
+			return e.Name()
 		}
-		for _, c := range found {
-			if c.export {
-				return c.rel
-			}
-		}
-		if len(found) > 0 {
-			return found[0].rel
-		}
-		sort.Strings(next)
-		level = next
 	}
 	return ""
 }
 
-const sampleSendDirName = "GPP Link" // beats sent from the computer land in a folder of their own
-
-// sampleDefaultSendTo is where beats go unless the producer picks another
-// folder: straight into the MPC Sample's user folder (it doesn't look inside
-// extra folders there), or a "GPP Link" folder on a card without one.
-func sampleDefaultSendTo(mount string) string {
-	if u := sampleUserDir(mount); u != "" {
-		return u
+// sampleRootDir finds the MPC Sample's own folder at the top of the card
+// ("MPC-Sample", any letter case, also "MPC Sample"), or "".
+func sampleRootDir(mount string) string {
+	if r := sampleChild(mount, "MPC-Sample"); r != "" {
+		return r
 	}
-	return sampleSendDirName
+	return sampleChild(mount, "MPC Sample")
 }
 
-// sendTo returns where beats go on the card mounted at m.
+// sampleUserDir returns "MPC-Sample/user" as spelled on the card, or "".
+func sampleUserDir(mount string) string {
+	r := sampleRootDir(mount)
+	if r == "" {
+		return ""
+	}
+	if u := sampleChild(filepath.Join(mount, r), "user"); u != "" {
+		return r + "/" + u
+	}
+	return ""
+}
+
+// sampleDefaultSendTo is where beats go unless the producer picks another
+// folder: MPC-Sample/Samples/GPP Link (Samples as spelled on the card). It
+// returns "" if the card has no MPC-Sample folder.
+func sampleDefaultSendTo(mount string) string {
+	r := sampleRootDir(mount)
+	if r == "" {
+		return ""
+	}
+	smp := sampleChild(filepath.Join(mount, r), "Samples")
+	if smp == "" {
+		smp = "Samples" // the MPC Sample makes this one itself; it's safe to make it
+	}
+	return r + "/" + smp + "/" + sampleSendDirName
+}
+
+// sendTo returns where beats go on the card mounted at m ("" = nowhere yet).
 func (c sampleConfig) sendTo(m string) string {
 	if c.SendToSet {
 		return c.SendTo
@@ -266,11 +263,12 @@ func (c sampleConfig) sendTo(m string) string {
 	return sampleDefaultSendTo(m)
 }
 
-// sampleDest resolves the send-to folder on the card (it's created on the first send).
+// sampleDest resolves the send-to folder on the card (it's made on the first
+// send). It never falls back to the top of the card.
 func sampleDest(m string, cfg sampleConfig) (string, error) {
 	f := cfg.sendTo(m)
 	if f == "" {
-		return m, nil
+		return "", errNoSampleFolder
 	}
 	return sampleSafe(m, f)
 }
@@ -376,7 +374,7 @@ type sampleStatus struct {
 	Busy       string        `json:"busy,omitempty"`   // copying right now
 	CanManage  bool          `json:"canManage"`        // pick the drive, change the folder, eject
 	Free       int64         `json:"free"`             // bytes free on the card (-1 unknown)
-	NoUser     bool          `json:"noUser,omitempty"` // no MPC Sample user folder found on the card
+	NoRoot     bool          `json:"noRoot,omitempty"` // no MPC-Sample folder on the card: sending is off
 }
 
 func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
@@ -397,50 +395,62 @@ func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 	st.Connected = true
 	st.Free = sampleFreeSpace(m)
 	st.Folder = cfg.sendTo(m)
-	// list the producer's own folder (the card's user folder, with exports and
-	// the GPP Link folder), not the factory kits; paths stay relative to the card
-	top := m
-	if u := sampleUserDir(m); u != "" {
-		top = filepath.Join(m, filepath.FromSlash(u))
+	// list the GPP Link folder and the songs in user/export, not the factory
+	// kits; paths stay relative to the top of the card
+	var tops []string
+	if st.Folder != "" {
+		if p, err := sampleSafe(m, st.Folder); err == nil {
+			tops = append(tops, p)
+		}
 	} else {
-		st.NoUser = true
+		st.NoRoot = true
+	}
+	if u := sampleUserDir(m); u != "" {
+		if e := sampleChild(filepath.Join(m, filepath.FromSlash(u)), "export"); e != "" {
+			tops = append(tops, filepath.Join(m, filepath.FromSlash(u), e))
+		}
 	}
 	n := 0
-	filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
+	for _, top := range tops {
+		if info, err := os.Stat(top); err != nil || !info.IsDir() {
+			continue
 		}
-		if p == top {
-			return nil
-		}
-		rel, _ := filepath.Rel(m, p)
-		if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "$") || d.Name() == "System Volume Information" {
+		filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if p == top {
+				return nil
+			}
+			rel, _ := filepath.Rel(m, p)
+			if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "$") || d.Name() == "System Volume Information" {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
 			if d.IsDir() {
-				return filepath.SkipDir
+				if strings.Count(rel, string(os.PathSeparator)) >= sampleMaxDepth {
+					return filepath.SkipDir
+				}
+				return nil
 			}
-			return nil
-		}
-		if d.IsDir() {
-			if strings.Count(rel, string(os.PathSeparator)) >= sampleMaxDepth {
-				return filepath.SkipDir
+			if d.Type()&fs.ModeSymlink != 0 || !allowedExt[strings.ToLower(filepath.Ext(p))] {
+				return nil
 			}
+			if n >= sampleMaxFiles {
+				st.More = true
+				return filepath.SkipAll
+			}
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			n++
+			st.Files = append(st.Files, entry{Path: filepath.ToSlash(rel), Name: d.Name(), Size: info.Size(), Mtime: info.ModTime().Unix()})
 			return nil
-		}
-		if d.Type()&fs.ModeSymlink != 0 || !allowedExt[strings.ToLower(filepath.Ext(p))] {
-			return nil
-		}
-		if n >= sampleMaxFiles {
-			st.More = true
-			return filepath.SkipAll
-		}
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-		n++
-		st.Files = append(st.Files, entry{Path: filepath.ToSlash(rel), Name: d.Name(), Size: info.Size(), Mtime: info.ModTime().Unix()})
-		return nil
-	})
+		})
+	}
 	sort.Slice(st.Files, func(i, j int) bool { return st.Files[i].Mtime > st.Files[j].Mtime })
 	writeJSON(w, st)
 }
@@ -571,7 +581,11 @@ func (h *hub) sampleSend(w http.ResponseWriter, r *http.Request) {
 	}
 	dir, err := sampleDest(m, cfg)
 	if err != nil {
-		httpErr(w, 400, err)
+		code := 400
+		if errors.Is(err, errNoSampleFolder) {
+			code = 409
+		}
+		httpErr(w, code, err)
 		return
 	}
 	name := filepath.Base(src)
@@ -799,7 +813,11 @@ func (h *hub) sampleSendFolder(w http.ResponseWriter, r *http.Request) {
 	}
 	dir, err := sampleDest(m, cfg)
 	if err != nil {
-		httpErr(w, 400, err)
+		code := 400
+		if errors.Is(err, errNoSampleFolder) {
+			code = 409
+		}
+		httpErr(w, code, err)
 		return
 	}
 	if err := sampleFits(m, filepath.Base(src), total, len(files)); err != nil {

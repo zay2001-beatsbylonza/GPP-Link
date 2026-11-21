@@ -87,19 +87,17 @@ From then on:
 
 The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable instead. Use the **MPC SAMPLE GPP** box on the hub page (**http://localhost:47800** on the computer the hub runs on).
 
-1. Put a microSD card in the MPC Sample. On its Project page, turn on **SD Card Access**, then plug it into the computer with USB-C. Its card shows up as a drive.
+1. Put a microSD card in the MPC Sample. On its Project page, turn on **SD Card Access**, then plug it into the computer with USB-C. Only the microSD card (External) shows up on the computer, never the internal drive.
 2. The first time, the box asks **Which drive is your MPC Sample?** Click its drive. The hub remembers it.
 3. When it says **MPC Sample connected**:
-   - Only the **microSD card** (External on the MPC Sample) shows up on the computer, never the internal drive. On the MPC Sample, save or export to **External** (press **B2** in the browser) so your beats show up here.
-   - The box finds the MPC Sample's **user** folder on the card, at the top or inside a folder like `MPC-Sample/user`, and lists the beats in it (including `user/export`). If the card has no user folder yet, the box says so: save one project to External on the MPC Sample first. The factory `samples` aren't listed.
-   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it straight into that **user** folder (never into `export`). On the MPC Sample, look under External → user. To use another folder, type it in the folder box and click **Save folder** (blank = back to the user folder).
-   - **Send Folder to MPC Sample** copies a whole folder from your Beats folder (a sample pack, a kit, stems) into the user folder on the card, keeping its name and the folders inside it. Only audio, MIDI and MPC files are copied. If the card already has a folder with that name, the copy becomes `Pack (2)`.
-   - The box shows how much space is free on the card. A beat or folder that won't fit isn't sent at all ("Soul Chops needs 1.2 GB, the MPC Sample has 800 MB free"). If a folder copy stops partway (the cable is pulled), the partial folder is removed from the card.
-   - **Send to Folder** (on a beat on the card) copies it into `Beats/From MPC/MPC Sample/`.
-   - **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft like any other beat.
-4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Mode.
+   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it into **`MPC-Sample/Samples/GPP Link`** on the card. On the MPC Sample, open the Sample Browser (SAMPLE SELECT), press **B2** for External, and open **GPP Link**.
+   - **Send Folder to MPC Sample** copies a whole folder from your Beats folder (a sample pack, a kit, stems) into `GPP Link`, keeping its name and the folders inside it. Only audio, MIDI and MPC files are copied. If the card already has a folder with that name, the copy becomes `Pack (2)`.
+   - The box lists your songs in **`MPC-Sample/user/export`** (save or export to External on the MPC Sample so they show up) and the beats in `GPP Link`. **Send to Folder** copies one into `Beats/From MPC/MPC Sample/`; **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft.
+   - GPP Link never writes into `user` or `export`, and never leaves files loose on the card. If the card has no `MPC-Sample` folder yet, sending is off until you save one sample to External on the MPC Sample.
+   - The box shows how much space is free on the card. A beat or folder that won't fit isn't sent at all. If a folder copy stops partway (the cable is pulled), the partial folder is removed.
+4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Access.
 
-Nothing is sent by itself, and nothing is overwritten: a second `kick.wav` becomes `kick (2).wav`, on the card and on the computer. Picking the drive, the folder and ejecting only work on the computer the hub runs on; a phone on the page can see the box and send beats.
+Nothing is sent by itself, and nothing is overwritten: a second `kick.wav` becomes `kick (2).wav`. Picking the drive, the folder and ejecting only work on the computer the hub runs on; a phone on the page can see the box and send beats. The hub page and window show the build number (for example `v0.3.1 build 1a2b3c4`), so you can tell which version is running.
 
 ## Test from an MPC before the plugin exists
 

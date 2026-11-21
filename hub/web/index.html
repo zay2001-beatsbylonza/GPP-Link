@@ -112,7 +112,7 @@ function ago(t) { const s = Date.now()/1000 - t; return s < 60 ? 'now' : s < 360
 
 async function loadHello() {
   const h = await (await fetch('/api/hello')).json();
-  $('hubline').textContent = 'Sharing "' + h.folder + '" from ' + h.name;
+  $('hubline').textContent = 'Sharing "' + h.folder + '" from ' + h.name + ' · v' + h.version + ' build ' + (h.build || 'dev');
 }
 async function loadDevices() {
   devices = await (await fetch('/api/devices')).json();
@@ -141,7 +141,7 @@ function renderFiles() {
     return `<li><div class="f"><b>${esc(f.name)}</b><i>${esc(dir)} · ${size(f.size)}</i></div>
       <button class="cue" data-i="${i}" ${target?'':'disabled'} title="Make this the MPC's Computer Files pick">Cue</button>
       <button class="send" data-i="${i}" ${target?'':'disabled'}>${target ? 'Send to ' + esc(target) : 'Send'}</button>
-      ${smp && smp.connected ? `<button class="tosample" data-i="${i}">Send to MPC Sample</button>` : ''}</li>`;
+      ${smp && smp.connected && !smp.noRoot ? `<button class="tosample" data-i="${i}">Send to MPC Sample</button>` : ''}</li>`;
   }).join('');
   ul.querySelectorAll('.cue').forEach(b => b.onclick = async () => {
     const f = list[+b.dataset.i];
@@ -263,11 +263,11 @@ function renderSample() {
     const ch = $('smpchange'); if (ch) ch.onclick = () => { smpChange = true; renderSample(); };
     return;
   }
-  const where = s.folder ? esc(s.folder) : 'the top of the card';
-  const nouser = s.noUser ? `<p class="note" style="border-color:var(--accent)">Couldn't find the MPC Sample's <b>user</b> folder on this card, so beats go to <b>${where}</b> at the top of the card, where the MPC Sample may not see them. Save one project to External on the MPC Sample first (it makes the user folder), then plug back in.</p>` : '';
-  const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send under External → <b>${where}</b>.</p>`;
+  const where = s.folder ? esc(s.folder) : 'nowhere yet';
+  const nouser = s.noRoot ? `<p class="note" style="border-color:var(--accent)">Couldn't find the <b>MPC-Sample</b> folder on this card, so sending is off (nothing goes loose on the card). On the MPC Sample, save one sample to External (B2) so it makes the folder, then plug back in.</p>` : '';
+  const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send in the Sample Browser under External → <b>Samples → GPP Link</b>.</p>`;
   const busy = s.busy ? `<p class="note">Copying <b>${esc(s.busy)}</b>…</p>` : '';
-  const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = user folder)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
+  const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = MPC-Sample/Samples/GPP Link)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
   const list = s.files.slice(0, 300);
   const files = list.length
     ? `<ul>${list.map((f, i) => {
@@ -277,10 +277,10 @@ function renderSample() {
           <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
     : `<p class="dim">No beats on the card yet.</p>`;
   box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy + (smpLast ? `<p class="note">${smpLast}</p>` : '') + nouser + tip +
-    `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
+    `<p class="dim">Sending to <b>${where}</b> on the card. Your songs are read from <b>user/export</b>. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
     `<p style="margin-top:4px"><b>Send a folder</b> <span class="dim">(sample packs, kits, stems from your Beats folder)</span></p>` +
     (smpFolders.length
-      ? `<div class="row"><select id="smpdir">${smpFolders.map(f => `<option value="${esc(f.path)}" ${f.path===smpPick?'selected':''}>${esc(f.path)} (${f.files} file${f.files>1?'s':''}, ${size(f.bytes)}${s.free >= 0 && f.bytes > s.free ? ', too big' : ''})</option>`).join('')}</select><button class="sendfolder" id="smpsenddir" ${s.busy?'disabled':''}>Send Folder to MPC Sample</button></div>`
+      ? `<div class="row"><select id="smpdir">${smpFolders.map(f => `<option value="${esc(f.path)}" ${f.path===smpPick?'selected':''}>${esc(f.path)} (${f.files} file${f.files>1?'s':''}, ${size(f.bytes)}${s.free >= 0 && f.bytes > s.free ? ', too big' : ''})</option>`).join('')}</select><button class="sendfolder" id="smpsenddir" ${s.busy||s.noRoot?'disabled':''}>Send Folder to MPC Sample</button></div>`
       : `<p class="dim">No folders with samples in your Beats folder yet.</p>`) +
     `<p class="dim">On the card:</p>` + files +
     (s.canManage ? `<div class="row"><button class="eject" id="smpeject">Eject MPC Sample</button><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');

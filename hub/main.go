@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	version       = "0.3.0"
+	version       = "0.3.1"
 	defaultPort   = 47800
 	discoveryPort = 47801
 	discoverMsg   = "MPCLINK-DISCOVER 1"
@@ -39,6 +39,9 @@ const (
 	inboxDirName  = "From MPC"
 	gppDirName    = "Get Producers Paid" // beats waiting to go to the Get Producers Paid app as drafts
 )
+
+// build tells test builds apart; GitHub sets it to the commit (-ldflags "-X main.build=...").
+var build = "dev"
 
 //go:embed web/index.html
 var webFS embed.FS
@@ -148,7 +151,7 @@ func main() {
 		Handler:           logRequests(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	fmt.Printf("GPP Link hub %s\n", version)
+	fmt.Printf("GPP Link hub %s (build %s)\n", version, build)
 	fmt.Printf("Sharing:   %s\n", root)
 	fmt.Printf("Hub name:  %s\n", hubName)
 	for _, a := range lanAddrs() {
@@ -202,7 +205,7 @@ func (h *hub) index(w http.ResponseWriter, r *http.Request) {
 
 func (h *hub) hello(w http.ResponseWriter, r *http.Request) {
 	h.touch(r)
-	writeJSON(w, map[string]any{"app": "mpc-link", "version": version, "name": h.name, "folder": filepath.Base(h.root)})
+	writeJSON(w, map[string]any{"app": "mpc-link", "version": version, "build": build, "name": h.name, "folder": filepath.Base(h.root)})
 }
 
 // list returns every allowed file under the Beats folder (or under ?dir=).
