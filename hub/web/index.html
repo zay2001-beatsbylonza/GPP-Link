@@ -55,6 +55,25 @@
   .gpp .note.bad { border-color:var(--accent); }
   .gpp ul.skips { margin:0 0 10px; font-size:13px; }
   .gpp ul.skips li { padding:6px 10px; color:var(--dim); }
+  .smp { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .smp p { margin:0 0 10px; }
+  .smp .dim { color:var(--dim); font-size:13px; }
+  .smp .on { color:var(--yellow); font-weight:700; }
+  .smp .note { border-left:3px solid var(--yellow); padding:6px 10px; margin:0 0 10px; font-size:14px; }
+  .smp .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  .smp input { flex:1 1 160px; min-width:0; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:#000; color:var(--ink); font:inherit; }
+  .smp input:focus { outline:2px solid var(--yellow); }
+  .smp button { border:0; border-radius:8px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .smp button:disabled { opacity:.4; cursor:default; }
+  .smp .pick { background:var(--yellow); color:#000; }
+  .smp .ghost { background:transparent; color:var(--dim); border:1px solid var(--line); }
+  .smp .eject { background:transparent; color:#fff; border:1px solid var(--accent); }
+  .smp ul { margin:0 0 10px; }
+  button.tofolder { border:1px solid var(--yellow); background:transparent; color:var(--yellow); border-radius:8px; padding:7px 10px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
+  button.togpp, button.tosample { border:0; background:var(--accent); color:#fff; border-radius:8px; padding:8px 12px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
+  button.tosample { background:var(--yellow); color:#000; }
+  button.tofolder:disabled, button.togpp:disabled, button.tosample:disabled { opacity:.35; cursor:default; }
+  button.done { background:var(--yellow) !important; color:#000 !important; border-color:var(--yellow) !important; }
   #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--yellow); color:#000; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
   #toast.show { opacity:1; }
 </style>
@@ -70,6 +89,9 @@
 
   <h2>Get Producers Paid</h2>
   <div class="gpp" id="gpp"><span class="empty">Loading…</span></div>
+
+  <h2>MPC SAMPLE GPP</h2>
+  <div class="smp" id="smp"><span class="empty">Loading…</span></div>
 
   <h2>Beats folder</h2>
   <input type="search" id="q" placeholder="Search beats, samples, projects…" autocomplete="off">
@@ -116,13 +138,21 @@ function renderFiles() {
     const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : 'Beats';
     return `<li><div class="f"><b>${esc(f.name)}</b><i>${esc(dir)} · ${size(f.size)}</i></div>
       <button class="cue" data-i="${i}" ${target?'':'disabled'} title="Make this the MPC's Computer Files pick">Cue</button>
-      <button class="send" data-i="${i}" ${target?'':'disabled'}>${target ? 'Send to ' + esc(target) : 'Send'}</button></li>`;
+      <button class="send" data-i="${i}" ${target?'':'disabled'}>${target ? 'Send to ' + esc(target) : 'Send'}</button>
+      ${smp && smp.connected ? `<button class="tosample" data-i="${i}">Send to MPC Sample</button>` : ''}</li>`;
   }).join('');
   ul.querySelectorAll('.cue').forEach(b => b.onclick = async () => {
     const f = list[+b.dataset.i];
     const r = await fetch('/api/cue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ device: target, path: f.path }) });
     if (r.ok) toast(f.name + ' cued on ' + target + ' (Computer Files)');
     else toast('Could not cue: ' + (await r.text()).trim());
+  });
+  ul.querySelectorAll('.tosample').forEach(b => b.onclick = async () => {
+    const f = list[+b.dataset.i];
+    b.disabled = true; b.textContent = 'Copying…';
+    const r = await smpPost('/api/sample/send', { path: f.path });
+    if (r.ok) { b.textContent = 'On MPC Sample'; b.classList.add('done'); toast(f.name + ' is on the MPC Sample'); loadSample(); }
+    else { b.disabled = false; b.textContent = 'Send to MPC Sample'; toast('Could not send: ' + (await r.text()).trim()); }
   });
   ul.querySelectorAll('.send').forEach(b => b.onclick = async () => {
     const f = list[+b.dataset.i];
@@ -189,10 +219,95 @@ function renderGPP() {
   };
 }
 
-loadHello(); loadDevices(); loadFiles(); loadGPP();
+// ---- MPC SAMPLE GPP: the MPC Sample's card over USB-C (SD Card Mode) ----
+let smp = null, smpWasOn = null, smpChange = false;
+function smpPost(url, body) {
+  return fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-GPP-Link':'1'}, body: JSON.stringify(body || {}) });
+}
+async function loadSample() {
+  try { smp = await (await fetch('/api/sample')).json(); } catch (e) { return; }
+  if (smpWasOn !== null && smpWasOn !== smp.connected) { toast(smp.connected ? 'MPC Sample connected' : 'MPC Sample unplugged'); renderFiles(); }
+  smpWasOn = smp.connected;
+  renderSample();
+}
+function renderSample() {
+  const box = $('smp'), s = smp;
+  if (!s) return;
+  if (document.activeElement && document.activeElement.id === 'smpfolder') return; // don't redraw while typing
+  const how = `<p class="note">Put your MPC Sample in <b>SD Card Mode</b> and plug it into this computer with USB-C.</p>`;
+  if (!s.connected) {
+    if (!s.drive || smpChange) {
+      if (!s.canManage) { box.innerHTML = how + `<p class="dim">Pick the MPC Sample's drive on the computer the hub runs on (<b>http://localhost:47800</b>).</p>`; return; }
+      const picks = s.candidates.length
+        ? `<p>Which drive is your MPC Sample? You only pick it once.</p><div class="row">${s.candidates.map(d => `<button class="pick" data-d="${esc(d.name)}">${esc(d.name)}</button>`).join('')}</div>`
+        : `<p class="dim">No drives plugged in yet.</p>`;
+      box.innerHTML = how + picks + (smpChange && s.drive ? `<div class="row"><button class="ghost" id="smpcancel">Keep ${esc(s.drive)}</button></div>` : '');
+      box.querySelectorAll('.pick').forEach(b => b.onclick = async () => {
+        const r = await smpPost('/api/sample/pick', { drive: b.dataset.d });
+        if (r.ok) { smpChange = false; toast(b.dataset.d + ' is your MPC Sample'); } else toast('Could not pick it: ' + (await r.text()).trim());
+        loadSample();
+      });
+      const c = $('smpcancel'); if (c) c.onclick = () => { smpChange = false; renderSample(); };
+      return;
+    }
+    box.innerHTML = how + `<p class="dim">Waiting for <b>${esc(s.drive)}</b>…</p>` +
+      (s.canManage ? `<div class="row"><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');
+    const ch = $('smpchange'); if (ch) ch.onclick = () => { smpChange = true; renderSample(); };
+    return;
+  }
+  const where = s.folder ? esc(s.folder) : 'the top of the card';
+  const busy = s.busy ? `<p class="note">Copying <b>${esc(s.busy)}</b>…</p>` : '';
+  const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = top of the card)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
+  const list = s.files.slice(0, 300);
+  const files = list.length
+    ? `<ul>${list.map((f, i) => {
+        const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : 'card';
+        return `<li><div class="f"><b>${esc(f.name)}</b><i>${esc(dir)} · ${size(f.size)}</i></div>
+          <button class="tofolder" data-i="${i}">Send to Folder</button>
+          <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
+    : `<p class="dim">No beats on the card yet.</p>`;
+  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})</span></p>` + busy +
+    `<p class="dim">Beats you send go to ${where}. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
+    `<p class="dim">On the card:</p>` + files +
+    (s.canManage ? `<div class="row"><button class="eject" id="smpeject">Eject MPC Sample</button><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');
+  const form = $('smpform');
+  if (form) form.onsubmit = async e => {
+    e.preventDefault();
+    const r = await smpPost('/api/sample/folder', { folder: $('smpfolder').value });
+    $('smpfolder').blur();
+    toast(r.ok ? 'Saved' : 'Could not save: ' + (await r.text()).trim());
+    loadSample();
+  };
+  const pull = (b, dest, label, doneLabel) => async () => {
+    const f = list[+b.dataset.i];
+    box.querySelectorAll('.tofolder,.togpp').forEach(x => x.disabled = true);
+    b.textContent = 'Copying…';
+    const r = await smpPost('/api/sample/pull', { path: f.path, dest });
+    const t = (await r.text()).trim();
+    if (r.ok) { toast(f.name + (dest === 'gpp' ? ' is going to Get Producers Paid as a draft' : ' is in From MPC/MPC Sample')); loadFiles(); loadGPP(); }
+    else toast('Could not send: ' + t);
+    await loadSample();
+    if (r.ok) { const nb = box.querySelector(`.${dest==='gpp'?'togpp':'tofolder'}[data-i="${b.dataset.i}"]`); if (nb) { nb.textContent = doneLabel; nb.classList.add('done'); } }
+  };
+  box.querySelectorAll('.tofolder').forEach(b => b.onclick = pull(b, 'folder', 'Send to Folder', 'In Folder'));
+  box.querySelectorAll('.togpp').forEach(b => b.onclick = pull(b, 'gpp', 'Send to GPP', 'Sent to GPP'));
+  const ej = $('smpeject');
+  if (ej) ej.onclick = async () => {
+    ej.disabled = true; ej.textContent = 'Ejecting…';
+    const r = await smpPost('/api/sample/eject');
+    const t = (await r.text()).trim();
+    let msg = t; try { msg = JSON.parse(t).message || t; } catch (e) {}
+    toast(r.ok ? msg : 'Could not eject: ' + msg);
+    loadSample();
+  };
+  const ch = $('smpchange'); if (ch) ch.onclick = () => { smpChange = true; smp.connected = false; renderSample(); };
+}
+
+loadHello(); loadDevices(); loadFiles(); loadGPP(); loadSample();
 setInterval(loadGPP, 4000);
 setInterval(loadDevices, 3000);
 setInterval(loadFiles, 15000);
+setInterval(loadSample, 3000);
 </script>
 </body>
 </html>

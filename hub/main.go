@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	version       = "0.2.0"
+	version       = "0.3.0"
 	defaultPort   = 47800
 	discoveryPort = 47801
 	discoverMsg   = "MPCLINK-DISCOVER 1"
@@ -63,7 +63,8 @@ type hub struct {
 	queue   map[string][]string  // MPC name -> paths waiting for it
 	cue     map[string]string    // MPC name -> beat picked on the phone for its Mac Beat picker
 
-	gpp *gppManager // Get Producers Paid drafts uploader (nil if its server address is bad)
+	gpp    *gppManager    // Get Producers Paid drafts uploader (nil if its server address is bad)
+	sample *sampleManager // MPC SAMPLE GPP: the MPC Sample's card, plugged in over USB-C
 }
 
 type entry struct {
@@ -103,7 +104,8 @@ func main() {
 	}
 
 	h := &hub{root: root, name: hubName, port: *port,
-		devices: map[string]time.Time{}, queue: map[string][]string{}, cue: map[string]string{}}
+		devices: map[string]time.Time{}, queue: map[string][]string{}, cue: map[string]string{},
+		sample: newSampleManager(gppStateDir())}
 
 	if m, err := newGPPManager(root, hubName, *gppServer, gppStateDir()); err != nil {
 		log.Printf("Get Producers Paid is off: %v", err)
@@ -132,6 +134,12 @@ func main() {
 	mux.HandleFunc("GET /api/gpp", h.gppStatus)
 	mux.HandleFunc("POST /api/gpp/pair", h.gppPair)
 	mux.HandleFunc("POST /api/gpp/disconnect", h.gppDisconnect)
+	mux.HandleFunc("GET /api/sample", h.sampleStatus)
+	mux.HandleFunc("POST /api/sample/pick", h.samplePick)
+	mux.HandleFunc("POST /api/sample/folder", h.sampleFolder)
+	mux.HandleFunc("POST /api/sample/send", h.sampleSend)
+	mux.HandleFunc("POST /api/sample/pull", h.samplePull)
+	mux.HandleFunc("POST /api/sample/eject", h.sampleEjectRoute)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", *port),
@@ -151,6 +159,7 @@ func main() {
 			fmt.Printf("Get Producers Paid: not connected. To connect, open http://localhost:%d on this computer.\n", *port)
 		}
 	}
+	fmt.Printf("MPC SAMPLE GPP: put the MPC Sample in SD Card Mode, plug it in with USB-C, then open http://localhost:%d\n", *port)
 	fmt.Println("Leave this window open while you use the MPCs. Press Ctrl+C to stop.")
 	log.Fatal(srv.ListenAndServe())
 }
@@ -639,7 +648,7 @@ func httpErr(w http.ResponseWriter, code int, err error) {
 
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/inbox" && r.URL.Path != "/api/devices" && r.URL.Path != "/api/cue" { // these poll often
+		if r.URL.Path != "/api/inbox" && r.URL.Path != "/api/devices" && r.URL.Path != "/api/cue" && r.URL.Path != "/api/sample" { // these poll often
 			log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.RequestURI())
 		}
 		next.ServeHTTP(w, r)

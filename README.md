@@ -83,6 +83,20 @@ From then on:
 
 **Server address:** `https://app.beatsbylonza.com/api/mpclink`. To use a different one, start the hub with `--gpp-server <address>` or set `GPP_SERVER`.
 
+## MPC SAMPLE GPP (the MPC Sample, over USB-C)
+
+The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable instead. Use the **MPC SAMPLE GPP** box on the hub page (**http://localhost:47800** on the computer the hub runs on).
+
+1. On the MPC Sample, turn on **SD Card Mode**, then plug it into the computer with USB-C. Its card shows up as a drive.
+2. The first time, the box asks **Which drive is your MPC Sample?** Click its drive. The hub remembers it.
+3. When it says **MPC Sample connected**:
+   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it onto the card. Leave the folder box blank for the top of the card, or type a folder on the card and click **Save folder**.
+   - **Send to Folder** (on a beat on the card) copies it into `Beats/From MPC/MPC Sample/`.
+   - **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft like any other beat.
+4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Mode.
+
+Nothing is sent by itself, and nothing is overwritten: a second `kick.wav` becomes `kick (2).wav`, on the card and on the computer. Picking the drive, the folder and ejecting only work on the computer the hub runs on; a phone on the page can see the box and send beats.
+
 ## Test from an MPC before the plugin exists
 
 With Developer mode on, copy `mpclink-cli` (the build for that MPC's generation) to the MPC over SFTP, then over SSH:
@@ -111,6 +125,7 @@ If `find` gets no answer (some routers block broadcasts), add `-h <Mac IP>`.
   - `GET /api/stems?format=tsv` (stems folders: `files<TAB>mtime<TAB>path`) and `POST /api/stems/send?path=<folder>` (the Mac copies it to `Get Producers Paid/Stems/`)
   - `GET /api/inbox`, files queued from the phone, then `POST /api/inbox/ack?path=<p>` for each one received
   - phone page: `GET /api/devices`, `POST /api/queue {"device","path"}`
+  - MPC SAMPLE GPP (hub page; POSTs need header `X-GPP-Link: 1`): `GET /api/sample`, `POST /api/sample/send {"path"}`, `POST /api/sample/pull {"path","dest":"folder"|"gpp"}`; from this computer only: `POST /api/sample/pick {"drive"}`, `POST /api/sample/folder {"folder"}`, `POST /api/sample/eject`
 
 ## To confirm on the hardware
 
