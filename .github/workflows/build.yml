@@ -40,7 +40,7 @@ jobs:
           mkdir -p "../dist/GPP Link"
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.build=${GITHUB_SHA::7}" -o "../dist/GPP Link/gpp-link-hub-apple-silicon" .
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.build=${GITHUB_SHA::7}" -o "../dist/GPP Link/gpp-link-hub-intel" .
-          cp "Start GPP Link.command" ../README.md ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf "../dist/GPP Link/"
+          cp "Start GPP Link.command" ../README.md ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf ../docs/Picture-Guide-*.png "../dist/GPP Link/"
           chmod +x "../dist/GPP Link/"*.command "../dist/GPP Link/"gpp-link-hub-*
       - name: Zip (keeps the run permissions)
         working-directory: dist
@@ -64,7 +64,7 @@ jobs:
           mkdir -p "../dist/GPP Link"
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.build=${GITHUB_SHA::7}" -o "../dist/GPP Link/gpp-link-hub.exe" .
           CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.build=${GITHUB_SHA::7}" -o "../dist/GPP Link/gpp-link-hub-arm64.exe" .
-          cp "Start GPP Link.bat" "Windows - Read Me First.txt" ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf "../dist/GPP Link/"
+          cp "Start GPP Link.bat" "Windows - Read Me First.txt" ../THANK-YOU.txt ../docs/GPP-Link-Quick-Start.pdf ../docs/GPP-Link-How-To-Guide.pdf ../docs/Picture-Guide-*.png "../dist/GPP Link/"
           # Windows needs CRLF line ends in the .bat and text files
           sed -i 's/\r*$/\r/' "../dist/GPP Link/Start GPP Link.bat" "../dist/GPP Link/Windows - Read Me First.txt" "../dist/GPP Link/THANK-YOU.txt"
       - name: Zip
