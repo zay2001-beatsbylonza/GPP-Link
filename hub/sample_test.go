@@ -298,3 +298,20 @@ func TestMPCSampleGPP(t *testing.T) {
 		t.Fatalf("send while unplugged: %d", code)
 	}
 }
+
+// The user folder can sit inside an MPC-Sample folder on the card.
+func TestMPCSampleNestedUserFolder(t *testing.T) {
+	m := t.TempDir()
+	os.MkdirAll(filepath.Join(m, "MPC-Sample", "samples", "user"), 0o755) // factory kit named user: ignored
+	os.MkdirAll(filepath.Join(m, "MPC-Sample", "User", "export"), 0o755)
+	os.MkdirAll(filepath.Join(m, "Other", "user"), 0o755)
+	if got := sampleUserDir(m); got != "MPC-Sample/User" {
+		t.Fatalf("user folder: %q", got)
+	}
+	if got := sampleDefaultSendTo(m); got != "MPC-Sample/User/GPP Link" {
+		t.Fatalf("send to: %q", got)
+	}
+	if got := sampleUserDir(t.TempDir()); got != "" {
+		t.Fatalf("empty card: %q", got)
+	}
+}

@@ -195,14 +195,53 @@ func sampleCandidates() []sampleDrive {
 	return out
 }
 
-// sampleUserDir returns the name of the card's user folder ("user" on the MPC
-// Sample, where its exports live), or "" if the card doesn't have one.
+// sampleUserDir finds the MPC Sample's user folder on the card (where its
+// exports live), relative to the card: "user" at the top, or one or two levels
+// down (e.g. "MPC-Sample/user"). A user folder holding "export" wins. It
+// returns "" if the card has none.
 func sampleUserDir(mount string) string {
-	entries, _ := os.ReadDir(mount)
-	for _, e := range entries {
-		if e.IsDir() && strings.EqualFold(e.Name(), "user") {
-			return e.Name()
+	type cand struct {
+		rel    string
+		export bool
+	}
+	var found []cand
+	level := []string{""}
+	for depth := 0; depth < 3 && len(level) > 0; depth++ {
+		var next []string
+		for _, rel := range level {
+			entries, _ := os.ReadDir(filepath.Join(mount, filepath.FromSlash(rel)))
+			for _, e := range entries {
+				n := e.Name()
+				if !e.IsDir() || strings.HasPrefix(n, ".") || strings.HasPrefix(n, "$") || n == "System Volume Information" {
+					continue
+				}
+				r := path.Join(rel, n)
+				if strings.EqualFold(n, "user") {
+					hasExport := false
+					sub, _ := os.ReadDir(filepath.Join(mount, filepath.FromSlash(r)))
+					for _, x := range sub {
+						if x.IsDir() && strings.EqualFold(x.Name(), "export") {
+							hasExport = true
+						}
+					}
+					found = append(found, cand{r, hasExport})
+					continue
+				}
+				if !strings.EqualFold(n, "samples") { // the factory kits can't hold the user folder
+					next = append(next, r)
+				}
+			}
 		}
+		for _, c := range found {
+			if c.export {
+				return c.rel
+			}
+		}
+		if len(found) > 0 {
+			return found[0].rel
+		}
+		sort.Strings(next)
+		level = next
 	}
 	return ""
 }
@@ -328,14 +367,15 @@ func copyNoOverwrite(src, dir, name string) (string, error) {
 
 type sampleStatus struct {
 	Connected  bool          `json:"connected"`
-	Drive      string        `json:"drive,omitempty"` // the remembered drive
-	Folder     string        `json:"folder"`          // where beats go on the card (relative to it)
-	Candidates []sampleDrive `json:"candidates"`      // drives to pick from
-	Files      []entry       `json:"files"`           // beats on the card
-	More       bool          `json:"more,omitempty"`  // the card has more than we listed
-	Busy       string        `json:"busy,omitempty"`  // copying right now
-	CanManage  bool          `json:"canManage"`       // pick the drive, change the folder, eject
-	Free       int64         `json:"free"`            // bytes free on the card (-1 unknown)
+	Drive      string        `json:"drive,omitempty"`  // the remembered drive
+	Folder     string        `json:"folder"`           // where beats go on the card (relative to it)
+	Candidates []sampleDrive `json:"candidates"`       // drives to pick from
+	Files      []entry       `json:"files"`            // beats on the card
+	More       bool          `json:"more,omitempty"`   // the card has more than we listed
+	Busy       string        `json:"busy,omitempty"`   // copying right now
+	CanManage  bool          `json:"canManage"`        // pick the drive, change the folder, eject
+	Free       int64         `json:"free"`             // bytes free on the card (-1 unknown)
+	NoUser     bool          `json:"noUser,omitempty"` // no MPC Sample user folder found on the card
 }
 
 func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
@@ -360,7 +400,9 @@ func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 	// the GPP Link folder), not the factory kits; paths stay relative to the card
 	top := m
 	if u := sampleUserDir(m); u != "" {
-		top = filepath.Join(m, u)
+		top = filepath.Join(m, filepath.FromSlash(u))
+	} else {
+		st.NoUser = true
 	}
 	n := 0
 	filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {

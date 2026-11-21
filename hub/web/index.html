@@ -262,6 +262,7 @@ function renderSample() {
     return;
   }
   const where = s.folder ? esc(s.folder) : 'the top of the card';
+  const nouser = s.noUser ? `<p class="note" style="border-color:var(--accent)">Couldn't find the MPC Sample's <b>user</b> folder on this card, so beats go to <b>${where}</b> at the top of the card, where the MPC Sample may not see them. Save one project to External on the MPC Sample first (it makes the user folder), then plug back in.</p>` : '';
   const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send under External → <b>${where}</b>.</p>`;
   const busy = s.busy ? `<p class="note">Copying <b>${esc(s.busy)}</b>…</p>` : '';
   const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = GPP Link folder)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
@@ -273,7 +274,7 @@ function renderSample() {
           <button class="tofolder" data-i="${i}">Send to Folder</button>
           <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
     : `<p class="dim">No beats on the card yet.</p>`;
-  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy + tip +
+  box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})${s.free >= 0 ? ' · ' + size(s.free) + ' free' : ''}</span></p>` + busy + nouser + tip +
     `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
     `<p style="margin-top:4px"><b>Send a folder</b> <span class="dim">(sample packs, kits, stems from your Beats folder)</span></p>` +
     (smpFolders.length
