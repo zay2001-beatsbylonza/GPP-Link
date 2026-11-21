@@ -96,6 +96,7 @@ The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable i
    - GPP Link never writes into `user` or `export`, and never leaves files loose on the card. If the card has no `MPC-Sample` folder yet, sending is off until you save one sample to External on the MPC Sample.
    - The box shows how much space is free on the card. A beat or folder that won't fit isn't sent at all. If a folder copy stops partway (the cable is pulled), the partial folder is removed.
 4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Access.
+5. **Restart the MPC Sample.** It only sees new files after a restart, so if new beats don't show in the Sample Browser, that's why.
 
 Nothing is sent by itself, and nothing is overwritten: a second `kick.wav` becomes `kick (2).wav`. Picking the drive, the folder and ejecting only work on the computer the hub runs on; a phone on the page can see the box and send beats. The hub page and window show the build number (for example `v0.3.1 build 1a2b3c4`), so you can tell which version is running.
 

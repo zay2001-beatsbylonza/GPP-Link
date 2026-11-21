@@ -265,7 +265,7 @@ function renderSample() {
   }
   const where = s.folder ? esc(s.folder) : 'nowhere yet';
   const nouser = s.noRoot ? `<p class="note" style="border-color:var(--accent)">Couldn't find the <b>MPC-Sample</b> folder on this card, so sending is off (nothing goes loose on the card). On the MPC Sample, save one sample to External (B2) so it makes the folder, then plug back in.</p>` : '';
-  const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send in the Sample Browser under External → <b>Samples → GPP Link</b>.</p>`;
+  const tip = `<p class="note">Only the microSD card shows up here. On the MPC Sample, save to <b>External</b> (press <b>B2</b> in the browser) so your beats appear here, and find beats you send in the Sample Browser under External → <b>Samples → GPP Link</b>. <b>New beats not showing? Restart the MPC Sample</b> after you unplug it.</p>`;
   const busy = s.busy ? `<p class="note">Copying <b>${esc(s.busy)}</b>…</p>` : '';
   const folderRow = s.canManage ? `<form class="row" id="smpform"><input id="smpfolder" value="${esc(s.folder)}" placeholder="Folder on the card (blank = MPC-Sample/Samples/GPP Link)" autocomplete="off" spellcheck="false"><button class="ghost" type="submit">Save folder</button></form>` : '';
   const list = s.files.slice(0, 300);
