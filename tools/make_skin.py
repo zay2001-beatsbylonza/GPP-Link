@@ -58,6 +58,7 @@ PICKERS = {
 }
 SLOT_X, PICK_Y, SLOT_W, SLOT_H = [23, 343, 663, 983], 346, 278, 107
 COUNTER = (983, 346, 278, 107)        # RECEIVED tab: how many files this MPC has received
+QLINK_STRIP = 10                      # height of the MPC's Q-Link highlight, at the top of each column
 
 # Cassette deck geometry (absolute, on the 1280 x 628 page; the controls start at y 346)
 DECK = (382, 12, 516, 322)            # x, y, w, h: a real cassette is about 1.6 : 1
@@ -454,6 +455,10 @@ def main():
             p = os.path.join(gen, f)
             if os.path.exists(p):
                 os.remove(p)
+        # The MPC's Q-Link highlight: only a thin strip at the top of each column, so it shows
+        # which Q-Link is live without a box over the controls.
+        for t in page["tabs"]:
+            t["qlinkBoundsData"] = ["%d 0 248 %d" % (x, QLINK_STRIP) for x in (38, 358, 678, 998)]
         json.dump(tui, open(tui_path, "w"), indent=1)
 
         # Q-Links only scroll the lists. Buttons and the cassette are tapped: a knob turned

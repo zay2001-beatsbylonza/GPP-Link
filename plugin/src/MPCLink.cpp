@@ -346,11 +346,11 @@ public:
             case kRecvCount: out = std::to_string(recvFiles_.size()); return true;
             case kRecv:
                 if (recvFiles_.empty()) out = "(nothing received yet)";
-                else out = fitText(baseName(recvFiles_[(size_t)std::min(i, (int)recvFiles_.size() - 1)]));
+                else out = fitText(baseName(recvFiles_[(size_t)std::min(i, (int)recvFiles_.size() - 1)]), 58);   // the long RECEIVED bar
                 return true;
             case kMpcBeat:
                 if (mpcFiles_.empty()) out = "(To Computer is empty)";
-                else out = fitText(baseName(mpcFiles_[(size_t)std::min(i, (int)mpcFiles_.size() - 1)]));
+                else out = fitText(baseName(mpcFiles_[(size_t)std::min(i, (int)mpcFiles_.size() - 1)]), 38);    // spans two columns
                 return true;
             case kStems:
                 if (stems_.empty()) out = connected_ ? "(no stems folders)" : "(not connected)";
