@@ -267,7 +267,7 @@ function renderSample() {
           <button class="togpp" data-i="${i}">Send to GPP</button></li>`; }).join('')}</ul>` + (s.more ? `<p class="dim">Showing the newest files only.</p>` : '')
     : `<p class="dim">No beats on the card yet.</p>`;
   box.innerHTML = `<p><span class="on">MPC Sample connected</span> <span class="dim">(${esc(s.drive)})</span></p>` + busy +
-    `<p class="dim">Beats you send go to ${where}. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
+    `<p class="dim">Showing and sending to ${where} on the card. Use <b>Send to MPC Sample</b> on any beat in the Beats folder below.</p>` + folderRow +
     `<p class="dim">On the card:</p>` + files +
     (s.canManage ? `<div class="row"><button class="eject" id="smpeject">Eject MPC Sample</button><button class="ghost" id="smpchange">Pick a different drive</button></div>` : '');
   const form = $('smpform');

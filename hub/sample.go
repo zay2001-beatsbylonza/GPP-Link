@@ -163,6 +163,18 @@ func sampleCandidates() []sampleDrive {
 	return out
 }
 
+// sampleUserDir returns the name of the card's user folder ("user" on the MPC
+// Sample, where its exports live), or "" if the card doesn't have one.
+func sampleUserDir(mount string) string {
+	entries, _ := os.ReadDir(mount)
+	for _, e := range entries {
+		if e.IsDir() && strings.EqualFold(e.Name(), "user") {
+			return e.Name()
+		}
+	}
+	return ""
+}
+
 // mount returns where the chosen drive is mounted, or "" if it isn't plugged in.
 func (s *sampleManager) mount() (string, sampleConfig) {
 	s.mu.Lock()
@@ -281,12 +293,31 @@ func (h *hub) sampleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st.Connected = true
+	if cfg.Folder == "" { // picked before the user folder existed, or an older setting
+		if u := sampleUserDir(m); u != "" {
+			s.mu.Lock()
+			s.cfg.Folder = u
+			s.saveLocked()
+			s.mu.Unlock()
+			st.Folder = u
+		}
+	}
+	// list only the folder the producer works in (the card's user folder), not
+	// the factory kits; paths stay relative to the top of the card
+	top := m
+	if st.Folder != "" {
+		if p, err := sampleSafe(m, st.Folder); err == nil {
+			if info, err := os.Stat(p); err == nil && info.IsDir() {
+				top = p
+			}
+		}
+	}
 	n := 0
-	filepath.WalkDir(m, func(p string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if p == m {
+		if p == top {
 			return nil
 		}
 		rel, _ := filepath.Rel(m, p)
@@ -363,6 +394,11 @@ func (h *hub) samplePick(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	if s.cfg.Drive != req.Drive {
 		s.cfg.Folder = ""
+		for _, d := range sampleCandidates() {
+			if d.Name == req.Drive {
+				s.cfg.Folder = sampleUserDir(d.mount) // open the card's user folder
+			}
+		}
 	}
 	s.cfg.Drive = req.Drive
 	err := s.saveLocked()

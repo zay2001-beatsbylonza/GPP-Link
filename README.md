@@ -90,7 +90,8 @@ The MPC Sample has no Wi-Fi and can't run plugins, so it connects with a cable i
 1. On the MPC Sample, turn on **SD Card Mode**, then plug it into the computer with USB-C. Its card shows up as a drive.
 2. The first time, the box asks **Which drive is your MPC Sample?** Click its drive. The hub remembers it.
 3. When it says **MPC Sample connected**:
-   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it onto the card. Leave the folder box blank for the top of the card, or type a folder on the card and click **Save folder**.
+   - The box opens the card's **user** folder by itself (where the MPC Sample keeps `export`), and lists the beats in it. The factory `samples` aren't listed.
+   - **Send to MPC Sample** (on any beat in the Beats folder list) copies it into the `user` folder. To use another folder, type it in the folder box and click **Save folder** (blank = top of the card).
    - **Send to Folder** (on a beat on the card) copies it into `Beats/From MPC/MPC Sample/`.
    - **Send to GPP** copies it into `Get Producers Paid/`, and it goes to the app as a draft like any other beat.
 4. Click **Eject MPC Sample** before you unplug it, then leave SD Card Mode.
