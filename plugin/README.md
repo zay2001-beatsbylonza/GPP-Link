@@ -63,7 +63,7 @@ Folders on the MPC's internal drive (**MPC User**), even when the plugin is inst
 
 Nothing on either side is ever overwritten; a second `kick.wav` becomes `kick (2).wav`.
 
-**Get Producers Paid:** for now, beats and stems wait in `Beats/Get Producers Paid/` on the Mac. Once the Get Producers Paid server is live, the hub will upload them to your producer account as drafts, where you add the title, price and license and publish.
+**Get Producers Paid (live now):** beats and stems you send land in `Beats/Get Producers Paid/` on the Mac, and the hub uploads them to your producer account as drafts. Connect your store once on the hub page (`http://localhost:47800`, pairing code from the app), then add the title, price and license in the app and publish.
 
 ## If it says "No Mac found"
 

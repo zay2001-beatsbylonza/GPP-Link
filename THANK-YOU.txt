@@ -13,7 +13,7 @@ producer friend.
 
 GET PRODUCERS PAID
 Get Producers Paid is my iPhone app for producers to sell their beats,
-coming soon to the App Store. GPP Link is built to work with it: beats and
+and it's live now. GPP Link is built to work with it: beats and
 stem sets you send with the SEND TO GET PRODUCERS PAID buttons land in the
 Get Producers Paid folder on your computer. Connect your store once on
 the hub page (open http://localhost:47800 on that computer and type the
